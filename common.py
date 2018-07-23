@@ -28,7 +28,7 @@ class QSocket:
         :param u: control vector
         :return: t, x: timestamp, vector of measured states
         """
-        self._soc.send(struct.pack(self._u_fmt, u))
+        self._soc.send(struct.pack(self._u_fmt, *u))
         data = self._soc.recv(self._buf_size)
         q = struct.unpack(self._x_fmt, data)
         t = q[0]
@@ -57,9 +57,10 @@ class VelocityFilter:
     """
     Create discrete velocity filter from continuous one.
     """
-    def __init__(self, num=(50, 0), den=(1, 50), dt=0.002):
+    def __init__(self, x_len, num=(50, 0), den=(1, 50), dt=0.002):
         """
         Initialize discrete filter coefficients
+        :param x_len: number of measured state variables to receive
         :param num: continuous-time filter numerator
         :param den: continuous-time filter denominator
         :param dt: sampling time interval
@@ -67,9 +68,8 @@ class VelocityFilter:
         derivative_filter = signal.cont2discrete((num, den), dt)
         self.b = derivative_filter[0].ravel()
         self.a = derivative_filter[1]
-        self.z = np.zeros((1, self.b.size))
+        self.z = np.zeros((1, x_len))
 
     def __call__(self, x):
-        xd, self.z = signal.lfilter(self.b, self.a, x[None, :], axis=0,
-                                    zi=self.z)
+        xd, self.z = signal.lfilter(self.b, self.a, x[None, :], axis=0, zi=self.z)
         return xd.ravel()
