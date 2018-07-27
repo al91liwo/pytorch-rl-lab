@@ -71,5 +71,5 @@ class VelocityFilter:
         self.z = np.zeros((1, x_len))
 
     def __call__(self, x):
-        xd, self.z = signal.lfilter(self.b, self.a, x[None, :], axis=0, zi=self.z)
+        xd, self.z = signal.lfilter(self.b, self.a, x[None, :], 0, self.z)
         return xd.ravel()
