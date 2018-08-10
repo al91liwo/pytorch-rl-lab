@@ -1,10 +1,16 @@
 import numpy as np
 from scipy import optimize
 import importlib
+
+from common import SymmetricBoxSpace
+from qube.qube import HybridCtrl
+
+
+# Visualization
 vp = None
 
 
-class QubeEnv:
+class Qube:
     # Sampling frequency
     fs = 500.0
 
@@ -20,13 +26,13 @@ class QubeEnv:
     Mr = 0.095  # mass (kg)
     Lr = 0.085  # length (m)
     Jr = Mr * Lr ** 2 / 12  # moment of inertia about COM (kg-m^2)
-    Dr = - km ** 2 / Rm  # equivalent viscous damping coefficient (N-m-s/rad)
+    Dr = 0.0003  # equivalent viscous damping coefficient (N-m-s/rad)
 
     # Pendulum link
     Mp = 0.024  # mass (kg)
     Lp = 0.129  # length (m)
     Jp = Mp * Lp ** 2 / 12  # moment of inertia about COM (kg-m^2)
-    Dp = 0.0002  # equivalent viscous damping coefficient (N-m-s/rad)
+    Dp = 0.00005  # equivalent viscous damping coefficient (N-m-s/rad)
 
     # Joint angles
     alpha = 0
@@ -56,6 +62,18 @@ class QubeEnv:
     shown_points = []
 
     def __init__(self, show_gui=True, center_camera=False):
+        self.measurement_space = SymmetricBoxSpace(
+            bound=np.array([2.3, np.inf]),
+            labels=('theta', 'alpha')
+        )
+        self.state_space = SymmetricBoxSpace(
+            bound=np.array([2.3, np.inf, np.inf, np.inf]),
+            labels=('theta', 'alpha', 'theta_dot', 'alpha_dot')
+        )
+        self.action_space = SymmetricBoxSpace(
+            bound=np.array([5.0]),
+            labels=('motor_voltage',)
+        )
         self.show_gui = show_gui
         if show_gui:
             self.set_gui(center_camera)
@@ -115,6 +133,7 @@ class QubeEnv:
             self.curve.clear()
         self.clear_rendered_points()
         self.render()
+        return np.zeros(4)
 
     def rk4(self, u, q):
         c1 = self.Mp * self.Lr ** 2 + 1 / 4 * self.Mp * self.Lp ** 2 - 1 / 4 * self.Mp * self.Lp ** 2 * np.cos(
@@ -137,7 +156,8 @@ class QubeEnv:
     # Execute one step for a given action
     def step(self, action, dt_multiple=1):
         # compute the applied torque from the control voltage (action)
-        u = self.km * (action - self.km * self.theta_d) / self.Rm
+        u = self.km * (action[0] - self.km * self.theta_d) / self.Rm
+        u = np.clip(u, -self.u_max, self.u_max)
         # clip the angle theta
         self.theta = np.clip(self.theta, self.theta_min, self.theta_max)
         # set torque to zero if pendulum is at it's max angle
@@ -151,6 +171,9 @@ class QubeEnv:
         k4 = self.rk4(u, u_i + 1 / self.fs * k3)
 
         [self.theta, self.alpha, self.theta_d, self.alpha_d] = u_i + 1 / (6 * self.fs) * (k1 + 2 * k2 + 2 * k3 + k4)
+
+        if self.show_gui:
+            self.render()
 
         return np.array([self.theta,
                         self.alpha,
@@ -365,3 +388,62 @@ class QubeEnv:
         for point in self.shown_points:
             point.visible = False
             del point
+
+    def close(self):
+        pass
+
+
+if __name__ == "__main__":
+    # Start QUBE
+    qube = Qube()
+
+    # Convenience variables
+    x_dim, u_dim = qube.state_space.dim, qube.action_space.dim
+    x_labels = qube.state_space.labels
+    u_labels = qube.action_space.labels
+
+    # Prepare data storage
+    n_cycles = int(7 * qube.fs)
+    x_all = np.zeros((n_cycles, x_dim))
+    u_all = np.zeros((n_cycles, u_dim))
+
+    # Control loop
+    print("Swinging up...")
+    act = HybridCtrl()
+    x = qube.reset()
+    for i in range(n_cycles):
+        u = act(x)
+        x = qube.step(u)
+        x_all[i] = x
+        u_all[i] = u
+    qube.step([0.0])
+    print("Swing-up done")
+
+    # Stop QUBE
+    qube.close()
+
+    # Plot
+    try:
+        import matplotlib.pyplot as plt
+
+        plt.style.use('seaborn')
+        fig, axes = plt.subplots(x_dim + u_dim, 1, figsize=(5, 8),
+                                 tight_layout=True)
+        legend_loc = 'lower right'
+        t = np.linspace(0, n_cycles / qube.fs, n_cycles)
+        for i in range(x_dim):
+            axes[i].plot(t, x_all.T[i], label=x_labels[i], c=f'C{i}')
+            axes[i].legend(loc=legend_loc)
+        for i in range(u_dim):
+            axes[x_dim+i].plot(t, u_all.T[i], label=u_labels[i], c=f'C{x_dim}')
+            axes[x_dim+i].legend(loc=legend_loc)
+        axes[0].set_ylabel('ang pos [rad]')
+        axes[1].set_ylabel('ang pos [rad]')
+        axes[2].set_ylabel('ang vel [rad/s]')
+        axes[3].set_ylabel('ang vel [rad/s]')
+        axes[4].set_ylabel('current [V]')
+        axes[4].set_xlabel('time [samples]')
+        plt.show()
+    except ImportError:
+        pass
+
