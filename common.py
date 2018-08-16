@@ -35,31 +35,31 @@ class QSocket:
         x = np.array(q[1:])
         return t, x
 
+    def close(self):
+        self._soc.close()
+
 
 class SymmetricBoxSpace:
     """
-    Generic real box space with symmetric boundaries.
+    Generic real-valued box space with symmetric boundaries.
     """
-    def __init__(self, bound, labels):
-        assert isinstance(bound, np.ndarray)
-        assert bound.size == len(labels)
+    def __init__(self, bound: np.ndarray, labels: tuple):
         self.bound_lo = -bound
         self.bound_up = bound
-        self.dim = self.bound_lo.size
         self.labels = labels
+        self.dim = len(labels)
 
-    def project(self, ele):
-        assert isinstance(ele, np.ndarray)
+    def project(self, ele: np.ndarray):
         return np.clip(ele, self.bound_lo, self.bound_up)
 
 
 class VelocityFilter:
     """
-    Create discrete velocity filter from continuous one.
+    Discrete velocity filter derived from a continuous one.
     """
     def __init__(self, x_len, num=(50, 0), den=(1, 50), dt=0.002, x_init=None):
         """
-        Initialize discrete filter coefficients
+        Initialize discrete filter coefficients.
         :param x_len: number of measured state variables to receive
         :param num: continuous-time filter numerator
         :param den: continuous-time filter denominator
@@ -88,5 +88,5 @@ class VelocityFilter:
         self.z = zi * x_init.reshape((1, -1))
 
     def __call__(self, x):
-        xd, self.z = signal.lfilter(self.b, self.a, x[None, :], axis=0, zi=self.z)
+        xd, self.z = signal.lfilter(self.b, self.a, x[None, :], 0, self.z)
         return xd.ravel()
