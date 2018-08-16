@@ -57,18 +57,35 @@ class VelocityFilter:
     """
     Create discrete velocity filter from continuous one.
     """
-    def __init__(self, x_len, num=(50, 0), den=(1, 50), dt=0.002):
+    def __init__(self, x_len, num=(50, 0), den=(1, 50), dt=0.002, x_init=None):
         """
         Initialize discrete filter coefficients
         :param x_len: number of measured state variables to receive
         :param num: continuous-time filter numerator
         :param den: continuous-time filter denominator
         :param dt: sampling time interval
+        :param x_init: initial observation of the signal to filter
         """
         derivative_filter = signal.cont2discrete((num, den), dt)
         self.b = derivative_filter[0].ravel()
         self.a = derivative_filter[1]
-        self.z = np.zeros((1, x_len))
+        if x_init is None:
+            self.z = np.zeros((1, x_len))
+        else:
+            self.set_initial_state(x_init)
+
+    def set_initial_state(self, x_init):
+        """
+        This method can be used to set the initial state of the velocity filter.
+        This is useful when the initial (position) observation has been retrieved and it is non-zero.
+        Otherwise the filter would assume a very high velocity.
+        :param x_init: initial observation
+        """
+        assert isinstance(x_init, np.ndarray)
+        # Get the initial condition of the filter
+        zi = signal.lfilter_zi(self.b, self.a)  # dim = order of the filter = 1
+        # Set the filter state
+        self.z = zi * x_init.reshape((1, -1))
 
     def __call__(self, x):
         xd, self.z = signal.lfilter(self.b, self.a, x[None, :], axis=0, zi=self.z)

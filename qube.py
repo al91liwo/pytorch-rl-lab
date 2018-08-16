@@ -1,5 +1,6 @@
-from common import QSocket, SymmetricBoxSpace, VelocityFilter
 import numpy as np
+
+from quanser_clients.common import QSocket, SymmetricBoxSpace, VelocityFilter
 
 
 class Qube:
@@ -20,15 +21,15 @@ class Qube:
             labels=('motor_voltage',)
         )
         # Initialize velocity filter
-        self._filt = VelocityFilter()
+        self.vel_filt = VelocityFilter(self.measurement_space.dim)
+
         # Initialize communication
-        self._soc = QSocket(ip, self.measurement_space.dim,
-                            self.action_space.dim)
+        self._soc = QSocket(ip, self.measurement_space.dim, self.action_space.dim)
 
     def step(self, a):
         """Send command and receive next state."""
         t, x = self._soc.snd_rcv(self.action_space.project(a))
-        s = np.r_[x, self._filt(x)]
+        s = np.r_[x, self.vel_filt(x)]
         return t, s
 
 

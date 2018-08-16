@@ -1,9 +1,10 @@
-from common import QSocket, SymmetricBoxSpace, VelocityFilter
 import numpy as np
+
+from quanser_clients.common import QSocket, SymmetricBoxSpace, VelocityFilter
 
 
 class BallBalancer:
-    def __init__(self, ip="130.83.164.122"):
+    def __init__(self, ip="130.83.164.119"):
         """
         Measurements:
         theta_x: plate angle in rad induced by the "X Axis Servo" (angle around the negative y axis)
@@ -26,7 +27,7 @@ class BallBalancer:
         )
 
         # Initialize velocity filter
-        self._filt = VelocityFilter(self.measurement_space.dim)
+        self.vel_filt = VelocityFilter(self.measurement_space.dim)
 
         # Initialize communication
         self._soc = QSocket(ip, self.measurement_space.dim, self.action_space.dim)
@@ -36,7 +37,7 @@ class BallBalancer:
         Send command and receive next state.
         """
         t, x = self._soc.snd_rcv(self.action_space.project(a))
-        s = np.r_[x, self._filt(x)]
+        s = np.r_[x, self.vel_filt(x)]
         return t, s
 
 
