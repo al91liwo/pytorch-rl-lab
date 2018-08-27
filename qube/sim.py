@@ -3,7 +3,7 @@ from scipy import optimize
 import importlib
 
 from common import SymmetricBoxSpace
-from qube.qube import HybridCtrl
+from qube import HybridCtrl
 
 
 # Visualization
