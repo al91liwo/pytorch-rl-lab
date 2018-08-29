@@ -3,7 +3,7 @@ from scipy import optimize
 import importlib
 
 from common import SymmetricBoxSpace
-from qube import HybridCtrl
+from qube.qube import HybridCtrl
 
 
 # Visualization
@@ -26,22 +26,21 @@ class Qube:
     Mr = 0.095  # mass (kg)
     Lr = 0.085  # length (m)
     Jr = Mr * Lr ** 2 / 12  # moment of inertia about COM (kg-m^2)
-    Dr = 0.0003  # equivalent viscous damping coefficient (N-m-s/rad)
+    Dr = 5e-5  # equivalent viscous damping coefficient (N-m-s/rad)
 
     # Pendulum link
     Mp = 0.024  # mass (kg)
     Lp = 0.129  # length (m)
     Jp = Mp * Lp ** 2 / 12  # moment of inertia about COM (kg-m^2)
-    Dp = 0.00005  # equivalent viscous damping coefficient (N-m-s/rad)
+    Dp = 1e-6  # equivalent viscous damping coefficient (N-m-s/rad)
 
     # Joint angles
     alpha = 0
     alpha_d = 0
-    alpha_dd = 0
     theta = 0
     theta_d = 0
-    theta_dd = 0
 
+    # Joint boundaries
     theta_min = -2.3
     theta_max = 2.3
     u_max = 5.0
@@ -50,8 +49,8 @@ class Qube:
     x_dim = 4
     x_labels = ('th', 'alpha', 'th_dot', 'alpha_dot')
     u_labels = ('Vm',)
-    x_min = (-2.3, -np.inf, -np.inf, -np.inf)
-    x_max = (2.3, np.inf, np.inf, np.inf)
+    x_min = (theta_min, -np.inf, -np.inf, -np.inf)
+    x_max = (theta_max, np.inf, np.inf, np.inf)
 
     range = 0.2  # shows a 0.4m x 0.4m excerpt of the scene
     arm_radius = 0.003
@@ -123,24 +122,23 @@ class Qube:
     # Reset global joint angles and re-render the scene
     def reset(self):
         # Joint angles
-        self.alpha = 0
-        self.alpha_d = 0
-        self.alpha_dd = 0
-        self.theta = 0
-        self.theta_d = 0
-        self.theta_dd = 0
+        [self.theta, self.alpha, self.theta_d, self.alpha_d] = [0.0, 0.0, 0.0, 0.0]
         if self.show_gui:
             self.curve.clear()
         self.clear_rendered_points()
         self.render()
         return np.zeros(4)
 
-    def rk4(self, u, q):
+    # Solve the EOM of the Qube, return the state derivative
+    def solve_eom(self, q, u):
+        # compute the applied torque from the voltage input 'u'
+        tau = self.km * (u - self.km * self.theta_d) / self.Rm
+
         c1 = self.Mp * self.Lr ** 2 + 1 / 4 * self.Mp * self.Lp ** 2 - 1 / 4 * self.Mp * self.Lp ** 2 * np.cos(
             q[1]) ** 2 + self.Jr
         c2 = 1 / 2 * self.Mp * self.Lp * self.Lr * np.cos(q[1])
-        c3 = u - self.Dr * q[2] - 0.5 * self.Mp * self.Lp ** 2 * np.sin(q[1]) * np.cos(
-            q[1]) * q[2] * q[3] - 0.5 * self.Mp * self.Lp * self.Lr * np.sin(
+        c3 = tau - self.Dr * q[2] - 0.5 * self.Mp * self.Lp ** 2 * np.sin(q[1]) * np.cos(
+            q[1]) * q[2] * q[3] + 0.5 * self.Mp * self.Lp * self.Lr * np.sin(
             q[1]) * q[3] ** 2
 
         c4 = 0.5 * self.Mp * self.Lp * self.Lr * np.cos(q[1])
@@ -148,40 +146,37 @@ class Qube:
         c6 = - self.Dp * q[3] + 1 / 4 * self.Mp * self.Lp ** 2 * np.cos(q[1]) * np.sin(
             q[1]) * q[2] ** 2 - 0.5 * self.Mp * self.Lp * self.g * np.sin(q[1])
 
-        a = np.array([[c1, -c2], [c4, c5]])
-        b = np.array([c3, c6])
-        [th_dd, al_dd] = np.linalg.solve(a, b)
-        return np.array([q[2], q[3], th_dd, al_dd])
+        return np.array([q[2],
+                         q[3],
+                         (c3*c5 - c2*c6)/(c1*c5 - c2*c4),
+                         (c1*c6 - c3*c4)/(c1*c5 - c2*c4)])
 
-    # Execute one step for a given action
-    def step(self, action, dt_multiple=1):
-        # compute the applied torque from the control voltage (action)
-        u = self.km * (action[0] - self.km * self.theta_d) / self.Rm
-        u = np.clip(u, -self.u_max, self.u_max)
-        # clip the angle theta
-        self.theta = np.clip(self.theta, self.theta_min, self.theta_max)
+    # Execute one step for a given voltage input 'u'
+    def step(self, u, dt=1.0/fs):
+        # get current state
+        x = np.array([self.theta, self.alpha, self.theta_d, self.alpha_d])
+        # clip input voltage
+        u = np.clip(u, - self.u_max, self.u_max)
         # set torque to zero if pendulum is at it's max angle
-        if self.theta == self.theta_min or self.theta == self.theta_max:
+        if self.theta <= self.theta_min or self.theta >= self.theta_max:
             self.theta_d = 0
-
-        u_i = np.array([self.theta, self.alpha, self.theta_d, self.alpha_d])
-        k1 = self.rk4(u, u_i)
-        k2 = self.rk4(u, u_i + 1 / (2 * self.fs) * k1)
-        k3 = self.rk4(u, u_i + 1 / (2 * self.fs) * k2)
-        k4 = self.rk4(u, u_i + 1 / self.fs * k3)
-
-        [self.theta, self.alpha, self.theta_d, self.alpha_d] = u_i + 1 / (6 * self.fs) * (k1 + 2 * k2 + 2 * k3 + k4)
+        # Use Runge Kutta integration to compute the next state
+        k1 = self.solve_eom(x, u)
+        k2 = self.solve_eom(x + dt / 2 * k1, u)
+        k3 = self.solve_eom(x + dt / 2 * k2, u)
+        k4 = self.solve_eom(x + dt * k3, u)
+        x = x + dt / 6 * (k1 + 2 * k2 + 2 * k3 + k4)
+        # clip the angle theta
+        x[0] = np.clip(x[0], self.theta_min, self.theta_max)
+        [self.theta, self.alpha, self.theta_d, self.alpha_d] = x
 
         if self.show_gui:
             self.render()
 
-        return np.array([self.theta,
-                        self.alpha,
-                        self.theta_d,
-                        self.alpha_d])
+        return x
 
     # Render global state
-    def render(self, rate=500):
+    def render(self, rate=int(fs)):
         if not self.show_gui:
             return
 
@@ -244,65 +239,6 @@ class Qube:
             res = optimize.least_squares(f, [1, 1], bounds=boundaries)
         return res.x, res.cost < 10e-8
 
-    '''
-    compute the joint angles for a given cartesian position using the pseudo inverse
-    des: desired cartesian position
-    init: initial guess for theta & alpha
-    err_treshold: treshold for the error [abort condition]
-    alpha: the rate of the gradient descent
-    return: q=[alpha, theta], succeeded?
-    '''
-    def inv_kin_pseudo(self, des, init=[0.01, 0.01], err_treshold=0.01, max_steps=500, retries=100, alpha=0.01):
-
-        def j(x):
-            al, th = x  # alpha , theta
-            return np.array(
-                [[-self.Lp * np.cos(al) * np.sin(th), -self.Lp * np.sin(al) * np.cos(th) - self.Lr * np.sin(th)],
-                 [self.Lp * np.cos(al) * np.cos(th), -self.Lp * np.sin(al) * np.sin(th) + self.Lr * np.cos(th)],
-                 [self.Lp * np.sin(al), 0]])
-
-        def jt(x):
-            return np.linalg.pinv(j(x))
-
-        q_found = None
-        for i in range(retries):
-            # compute joint angles via jacobian pseudo inverse iterations
-            q = np.concatenate([np.random.uniform(-np.pi, np.pi, 1), np.random.uniform(self.theta_min, self.theta_max, 1)])
-            err = np.inf
-            for i in range(max_steps):
-                # Check if error is small enough
-                if err < err_treshold:
-                    q_found = q
-                    break
-                # update the joint value
-                J = j(q)
-                J_t = J.T
-                J_pinv = np.dot(np.linalg.inv(np.dot(J_t, J)), J_t)
-                forw_cart = self.forw_kin(np.flip(q,0))[0]
-                d_cart = np.array(des) - np.array(forw_cart)
-                q_grad = np.dot(J_pinv, d_cart)
-                q += alpha * q_grad
-                # get the cartesian position for current q
-                point, reachable = self.forw_kin(np.flip(q,0))
-                # check if q is reachable
-                if not reachable:
-                    continue
-                # compute the current cartesian error
-                err = np.linalg.norm(np.array(des) - np.array(point))
-            if q_found is not None:
-                break
-
-        q_output = np.zeros(2)
-        if q_found is not None:
-            # return joint angles and whether the error is small enough
-            q_flip = np.flip(q, 0)
-            q_circle = np.fmod(q_flip, 2*np.pi)
-            q_circle_abs = np.abs(q_circle)
-            q_clip = np.greater(q_circle_abs, np.pi)
-            q_output = q_circle - np.multiply(np.multiply(q_clip, 2 * np.pi), np.sign(q_circle))
-            print("q " + str(q_flip) + str(q_output))
-        return q_output, q_found is not None
-
     # draw a projection line [-0.2 < y,z < 0.2]
     def line(self, y, z):
         if not self.show_gui:
@@ -355,8 +291,8 @@ class Qube:
         # print(x1, x2)
 
         # render the computed cartesian positions
-        #vp.sphere(pos=vp.vector(x1[0], x1[1], x1[2]), radius=0.003, color=vp.color.green)
-        #vp.sphere(pos=vp.vector(x2[0], x2[1], x2[2]), radius=0.003, color=vp.color.green)
+        # vp.sphere(pos=vp.vector(x1[0], x1[1], x1[2]), radius=0.003, color=vp.color.green)
+        # vp.sphere(pos=vp.vector(x2[0], x2[1], x2[2]), radius=0.003, color=vp.color.green)
 
         # compute the angle positions if z-coordinate is reachable
         q = []
@@ -372,6 +308,75 @@ class Qube:
                 # print('Q2', q2)
         # return a list of possible joint position [0-2 solutions possible]
         return q
+
+        ###########################################################################################################
+        '''
+        compute the joint angles for a given cartesian position using the pseudo inverse
+        des: desired cartesian position
+        init: initial guess for theta & alpha
+        err_treshold: treshold for the error [abort condition]
+        alpha: the rate of the gradient descent
+        return: q=[alpha, theta], succeeded?
+        '''
+
+        def inv_kin_pseudo(self, des, init=[0.01, 0.01], err_treshold=0.01,
+                           max_steps=500, retries=100, alpha=0.01):
+
+            def j(x):
+                al, th = x  # alpha , theta
+                return np.array(
+                    [[-self.Lp * np.cos(al) * np.sin(th),
+                      -self.Lp * np.sin(al) * np.cos(th) - self.Lr * np.sin(
+                          th)],
+                     [self.Lp * np.cos(al) * np.cos(th),
+                      -self.Lp * np.sin(al) * np.sin(th) + self.Lr * np.cos(
+                          th)],
+                     [self.Lp * np.sin(al), 0]])
+
+            def jt(x):
+                return np.linalg.pinv(j(x))
+
+            q_found = None
+            for i in range(retries):
+                # compute joint angles via jacobian pseudo inverse iterations
+                q = np.concatenate([np.random.uniform(-np.pi, np.pi, 1),
+                                    np.random.uniform(self.theta_min,
+                                                      self.theta_max, 1)])
+                err = np.inf
+                for i in range(max_steps):
+                    # Check if error is small enough
+                    if err < err_treshold:
+                        q_found = q
+                        break
+                    # update the joint value
+                    J = j(q)
+                    J_t = J.T
+                    J_pinv = np.dot(np.linalg.inv(np.dot(J_t, J)), J_t)
+                    forw_cart = self.forw_kin(np.flip(q, 0))[0]
+                    d_cart = np.array(des) - np.array(forw_cart)
+                    q_grad = np.dot(J_pinv, d_cart)
+                    q += alpha * q_grad
+                    # get the cartesian position for current q
+                    point, reachable = self.forw_kin(np.flip(q, 0))
+                    # check if q is reachable
+                    if not reachable:
+                        continue
+                    # compute the current cartesian error
+                    err = np.linalg.norm(np.array(des) - np.array(point))
+                if q_found is not None:
+                    break
+
+            q_output = np.zeros(2)
+            if q_found is not None:
+                # return joint angles and whether the error is small enough
+                q_flip = np.flip(q, 0)
+                q_circle = np.fmod(q_flip, 2 * np.pi)
+                q_circle_abs = np.abs(q_circle)
+                q_clip = np.greater(q_circle_abs, np.pi)
+                q_output = q_circle - np.multiply(
+                    np.multiply(q_clip, 2 * np.pi), np.sign(q_circle))
+                print("q " + str(q_flip) + str(q_output))
+            return q_output, q_found is not None
 
     def render_point(self, point, color=None):
         if not self.show_gui:
