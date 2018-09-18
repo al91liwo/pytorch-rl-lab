@@ -19,8 +19,8 @@ class QSocket:
         self._u_fmt = '>' + u_len * 'd'
         self._buf_size = (x_len + 1) * 8  # 8 bytes for each double
         self._port = 9095  # fixed in Simulink model
-        self._soc = socket.socket()
-        self._soc.connect((ip, self._port))
+        self._ip = ip
+        self._soc = None
 
     def snd_rcv(self, u):
         """
@@ -35,8 +35,15 @@ class QSocket:
         x = np.array(q[1:])
         return t, x
 
+    def open(self):
+        if self._soc is None:
+            self._soc = socket.socket()
+            self._soc.connect((self._ip, self._port))
+
     def close(self):
-        self._soc.close()
+        if self._soc is not None:
+            self._soc.close()
+            self._soc = None
 
 
 class SymmetricBoxSpace:

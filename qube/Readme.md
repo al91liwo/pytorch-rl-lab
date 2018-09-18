@@ -1,57 +1,69 @@
-QUBE Interface
-==============
+Qube environment
+================
 
-Interface for controlling Qube (Furuta Pendulum).
+Simulation and control of Quanser Qube (a.k.a. Furuta Pendulum).
+Tested with Python 3.6.5.
 
 
 Package contents
 ----------------
-1) `doc.pdf` some modeling documentation from Quanser
-1) `min.py` minimal communication interface -- just the step function
-1) `qube.py` complete communication interface with examples
-1) `sim.py` simulation and visualization
+1) `doc.pdf` physical model specification
+2) `base.py` common functionality and controllers
+3) `qube.py` simulated environment
+4) `qube_rr.py` real robot environment
+5) `examples` show how to use the environments
 
 
-Run swing-up demo
------------------
-Make sure you have `python3` and `scipy` installed.
+Simulation
+----------
+Start a simulated swing-up demo
 
-1) Run
+    python3 qube/examples/swing-up.py
+
+
+Controlling real robot
+----------------------
+To control the real robot, connect your computer to the same
+local network to which the Windows control PC is connected,
+e.g., by connecting directly to the Windows PC via an Ethernet cable.
+By default, the Windows PC has the IP address `192.172.162.1`.
+In case you need to use a different address,
+adjust the file `qube/__init__.py` accordingly.
+
+
+To run the swing-up demo on the real robot, perform the following steps:
+
+1) Start the control server on the Windows PC
 
         quarc_run -r Desktop\servers\qube\quarc_py_bridge_qube.rt-win64
 
-   on the Windows PC to start Qube server.
+2) Launch the client application on your machine
 
-1) Execute
+        python3 qube/examples/swing-up_rr.py
 
-        python3 qube.py
-
-   on your PC to connect to Qube and run the swing-up demo.
-
-1) After you are finished with experiments, run
+3) At the end of the day, shut down the control server
 
        quarc_run -q Desktop\servers\qube\quarc_py_bridge_qube.rt-win64
-   
-   on the Windows PC to shut down Qube server.
-
-By default, the Windows PC is expected to have the IP `192.172.162.1`.
-You have to be in the same local network.
 
 
-Use in your code
-----------------
-In your own code, use Qube as an OpenAI Gym environment
-```python
-from qube import Qube
-qube = Qube()
-x = qube.reset()
-for _ in range(int(qube.fs)):
-    u = [0.2]
-    x = qube.step(u)
-qube.close()
-```
-For further examples, see [qube.py](qube.py).
+### Canonical example of a control loop
+Here is the canonical way of using the real robot environment
 
-A physical model of QUBE and an explanation of the energy-based
-swing-up controller are provided in [doc.pdf](doc.pdf).
+    ctrl = ...  # some (stochastic) function f: s -> a
+    obs = env.reset()
+    done = False
+    while not done:
+        act = ctrl(obs)
+        obs, rwd, done, info = env.step(act)
+    env.step(0.0)
 
+Pay attention to the following important points:
+
+- Always reset the environment `env.reset()` before running `env.step(act)`
+  in a loop. If you forget to reset the environment and then send an action
+  after some time of inactivity, you will get an outdated observation.
+  
+- Send a zero command `env.step(0.0)` at the end of the control loop.
+  The robot will keep executing the last command it received.
+  The motor of the robot may get damaged if a constant non-zero voltage
+  gets applied for too long.
