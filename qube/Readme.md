@@ -7,11 +7,11 @@ Tested with Python 3.6.5.
 
 Package contents
 ----------------
-1) `doc.pdf` physical model specification
-2) `base.py` common functionality and controllers
-3) `qube.py` simulated environment
-4) `qube_rr.py` real robot environment
-5) `examples` show how to use the environments
+1. `doc.pdf` physical model specification
+2. `base.py` common functionality and controllers
+3. `qube.py` simulated environment
+4. `qube_rr.py` real robot environment
+5. `examples` show how to use the environments
 
 
 Simulation
@@ -33,15 +33,15 @@ adjust the file `qube/__init__.py` accordingly.
 
 To run the swing-up demo on the real robot, perform the following steps:
 
-1) Start the control server on the Windows PC
+1. Start the control server on the Windows PC
 
         quarc_run -r Desktop\servers\qube\quarc_py_bridge_qube.rt-win64
 
-2) Launch the client application on your machine
+2. Launch the client application on your machine
 
         python3 qube/examples/swing-up_rr.py
 
-3) At the end of the day, shut down the control server
+3. At the end of the day, shut down the control server
 
        quarc_run -q Desktop\servers\qube\quarc_py_bridge_qube.rt-win64
 
