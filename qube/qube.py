@@ -87,7 +87,7 @@ class Qube(QubeBase):
         return np.r_[th, al, th_d, al_d]
 
     def reset(self):
-        self._state = 0.05 * np.random.randn(self.state_space.shape[0])
+        self._state = 0.1 * np.random.randn(self.state_space.shape[0])
         self._curve.clear()
         return self.step(0.0)[0]
 
