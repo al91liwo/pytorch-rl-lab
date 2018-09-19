@@ -16,7 +16,7 @@ class QubeBase(gym.Env):
     Dr = 0.0  # equivalent viscous damping coefficient (N-m-s/rad)
 
     # Pendulum link
-    Mp = 0.020  # mass (kg)
+    Mp = 0.018  # mass (kg), original value is 0.024
     Lp = 0.129  # length (m)
     Jp = Mp * Lp ** 2 / 12  # moment of inertia about COM (kg-m^2)
     Dp = 0.0  # equivalent viscous damping coefficient (N-m-s/rad)
@@ -228,7 +228,7 @@ class CalibrCtrl:
 class EnergyCtrl:
     """Nonlinear energy shaping controller for a swing up."""
 
-    def __init__(self, mu=50.0, Er=0.024):
+    def __init__(self, mu, Er):
         self.mu = mu  # P-gain on the energy (m/s/J)
         self.Er = Er  # reference energy (J)
 
@@ -248,7 +248,7 @@ class SwingUpCtrl:
 
     def __init__(self, alpha_max_deg=20.0,
                  pd_ctrl=PDCtrl(K=[-1.5, 25.0, -1.5, 2.5]),
-                 en_ctrl=EnergyCtrl()):
+                 en_ctrl=EnergyCtrl(mu=50.0, Er=0.024)):
         self.cos_al_delta = 1.0 + np.cos(np.pi - np.deg2rad(alpha_max_deg))
         self.pd_ctrl = pd_ctrl
         self.en_ctrl = en_ctrl
