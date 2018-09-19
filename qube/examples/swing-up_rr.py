@@ -5,7 +5,7 @@ from qube.base import SwingUpCtrl
 
 plt.style.use('seaborn')
 
-env = gym.make('Qube-v0')
+env = gym.make('QubeRR-v0')
 
 ctrl = SwingUpCtrl()
 obs = env.reset()
