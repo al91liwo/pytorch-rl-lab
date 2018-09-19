@@ -4,8 +4,8 @@ from qube.base import QubeBase, CalibrCtrl
 
 
 class Qube(QubeBase):
-    def __init__(self, ip):
-        super(Qube, self).__init__()
+    def __init__(self, ip, fs_ctrl):
+        super(Qube, self).__init__(fs=500.0, fs_ctrl=fs_ctrl)
         self._qsoc = QSocket(ip, x_len=2, u_len=1)
         self._vel_filt = None
         self._th_mid = None
@@ -17,31 +17,28 @@ class Qube(QubeBase):
         self._alpha_mid = 0.0
         self._state = np.zeros(self.state_space.shape[0])
 
-        # Register alpha offset if alpha == k * 2pi (happens upon reconnect)
-        x, _ = self._snd_rcv(0.0)
+        # Record alpha offset if alpha == k * 2pi (happens upon reconnect)
+        x = self._sim_step(None, [0.0])
         while np.abs(x[3]) > 1e-6:
-            x, _ = self._snd_rcv(0.0)
+            x = self._sim_step(None, [0.0])
         self._alpha_mid = x[1]
 
-        # Find theta offset
+        # Find theta offset by going to joint limits
         act = CalibrCtrl()
-        x, _ = self._snd_rcv(0.0)
+        x = self._sim_step(None, [0.0])
         while not act.done:
-            x, _ = self._snd_rcv(act(x))
+            x = self._sim_step(None, [act(x)])
         self._th_mid = (act.go_right.th_lim + act.go_left.th_lim) / 2
 
         # Set current state
-        self._state, _ = self._snd_rcv(0.0)
+        self._state = self._sim_step(None, [0.0])
 
-    def _snd_rcv(self, a):
-        a_clip = np.clip(np.r_[a], -self.act_max, self.act_max)
-        pos = None
-        for _ in range(self.cmd_dur):
-            _, pos = self._qsoc.snd_rcv(a_clip)
-            pos[0] -= self._th_mid
-            pos[1] -= self._alpha_mid
-            self._vel_filt(pos)
-        return np.r_[pos, self._vel_filt(pos)], a_clip
+    def _sim_step(self, _, a):
+        _, pos = self._qsoc.snd_rcv(a)
+        pos[0] -= self._th_mid
+        pos[1] -= self._alpha_mid
+        self._vel_filt(pos)
+        return np.r_[pos, self._vel_filt(pos)]
 
     def reset(self):
         self._qsoc.close()
@@ -54,5 +51,5 @@ class Qube(QubeBase):
         pass
 
     def close(self):
-        self._snd_rcv(0.0)
+        self._sim_step(None, [0.0])
         self._qsoc.close()

@@ -4,11 +4,12 @@ from qube.base import QubeBase
 
 
 class Qube(QubeBase):
-    def __init__(self):
-        super(Qube, self).__init__()
+    def __init__(self, fs, fs_ctrl):
+        super(Qube, self).__init__(fs, fs_ctrl)
         self._arm, self._pole, self._curve = self._set_gui()
 
-    def _set_gui(self):
+    @staticmethod
+    def _set_gui():
         scene_range = 0.2  # 0.4m x 0.4m excerpt of the scene
         arm_radius = 0.003
         arm_length = 0.085
@@ -46,7 +47,6 @@ class Qube(QubeBase):
 
         # Curve
         curve = vp.curve(color=vp.color.white, radius=0.0005, retain=2000)
-
         return arm, pole, curve
 
     def _fw_kin(self, th, al):
@@ -62,10 +62,10 @@ class Qube(QubeBase):
             x, y, z = [0, 0, 0]
         return [x, y, z], reachable
 
-    def _next_state(self, x, u, dt):
+    def _sim_step(self, x, a):
         th, al, th_d, al_d = x
 
-        tau = self.km * (u - self.km * th_d) / self.Rm
+        tau = self.km * (a - self.km * th_d) / self.Rm
 
         c1 = self.a1 + self.a2 * (1.0 - np.cos(2 * al)) / 4 + self.Jr
         c2 = self.a3 * np.cos(al)
@@ -79,24 +79,15 @@ class Qube(QubeBase):
         th_dd = (c3 * self.a4 - c2 * c4) / c5
         al_dd = (c1 * c4 - c2 * c3) / c5
 
-        th_d += dt * th_dd
-        al_d += dt * al_dd
-        th += dt * th_d
-        al += dt * al_d
-
-        th_d = 0.0 if np.abs(th) > self.state_max[0] else th_d
+        th_d += self._dt * th_dd
+        al_d += self._dt * al_dd
+        th += self._dt * th_d
+        al += self._dt * al_d
 
         return np.r_[th, al, th_d, al_d]
 
-    def _snd_rcv(self, a):
-        a_clip = np.clip(np.r_[a], -self.act_max, self.act_max)
-        x = self._state
-        for _ in range(self.n_int_steps):
-            x = self._next_state(x, a_clip, self.dt_int)
-        return x, a_clip
-
     def reset(self):
-        self._state = 0.1 * np.random.randn(self.state_space.shape[0])
+        self._state = 0.05 * np.random.randn(self.state_space.shape[0])
         self._curve.clear()
         return self.step(0.0)[0]
 
@@ -122,4 +113,4 @@ class Qube(QubeBase):
 
         self._curve.append(self._pole.pos + self._pole.axis)
 
-        vp.rate(int(self.fs))
+        vp.rate(int(self._fs_ctrl))

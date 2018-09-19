@@ -1,18 +1,15 @@
 import numpy as np
 import matplotlib.pyplot as plt
 import gym
-from qube.base import QubeBase, SwingUpCtrl
+from qube.base import SwingUpCtrl
 
 plt.style.use('seaborn')
 
-
-s_all = []
-a_all = []
-
-env = gym.make('QubeRR-v0')
+env = gym.make('Qube-v0')
 
 ctrl = SwingUpCtrl()
 obs = env.reset()
+s_all, a_all = [], []
 done = False
 while not done:
     env.render()
@@ -31,11 +28,11 @@ s_all = np.stack(s_all)
 a_all = np.stack(a_all)
 
 n_points = s_all.shape[0]
-t = np.linspace(0, n_points / QubeBase.fs, n_points)
+t = np.linspace(0, n_points / env.unwrapped._fs_ctrl, n_points)
 for i in range(4):
-    axes[i].plot(t, s_all.T[i], label=QubeBase.state_labels[i], c=f'C{i}')
+    axes[i].plot(t, s_all.T[i], label=env.unwrapped.state_labels[i], c=f'C{i}')
     axes[i].legend(loc='lower right')
-axes[4].plot(t, a_all.T[0], label=QubeBase.act_labels[0], c=f'C{4}')
+axes[4].plot(t, a_all.T[0], label=env.unwrapped.act_labels[0], c=f'C{4}')
 axes[4].legend(loc='lower right')
 
 axes[0].set_ylabel('ang pos [rad]')

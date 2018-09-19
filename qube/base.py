@@ -4,13 +4,6 @@ import gym
 
 
 class QubeBase(gym.Env):
-    # Sampling and integration
-    max_fs = 500.0  # max sampling freq
-    fs = 50.0  # sampling frequency
-    cmd_dur = int(max_fs / fs)  # repeat command `cmd_dur` times
-    n_int_steps = max(int(max_fs / fs), 1)  # integration steps per command
-    dt_int = 1.0 / (n_int_steps * fs)  # time step of the integrator
-
     # Motor
     Rm = 8.4  # resistance
     kt = 0.042  # current-torque (N-m/A)
@@ -23,7 +16,7 @@ class QubeBase(gym.Env):
     Dr = 0.0  # equivalent viscous damping coefficient (N-m-s/rad)
 
     # Pendulum link
-    Mp = 0.024  # mass (kg)
+    Mp = 0.020  # mass (kg)
     Lp = 0.129  # length (m)
     Jp = Mp * Lp ** 2 / 12  # moment of inertia about COM (kg-m^2)
     Dp = 0.0  # equivalent viscous damping coefficient (N-m-s/rad)
@@ -37,16 +30,20 @@ class QubeBase(gym.Env):
     a5 = 0.5 * Mp * Lp * g
 
     # Limits
-    state_max = np.array([2.3, np.inf, np.inf, np.inf])
+    state_max = np.array([2.0, np.inf, np.inf, np.inf])
     obs_max = np.array([1.0, 1.0, 1.0, 1.0, np.inf, np.inf])
-    act_max = np.array([5.0])
+    act_max = np.array([4.0])
+
+    # Joint springs to avoid hitting joint limits
+    th_jlim = 1.6
+    th_jlim_stiffness = 2.0 * act_max / (state_max[0] - th_jlim)
 
     # Labels
     state_labels = ('theta', 'alpha', 'theta_dot', 'alpha_dot')
     obs_labels = ('cos_th', 'sin_th', 'cos_al', 'sin_al', 'th_d', 'al_d')
     act_labels = ('volts',)
     
-    def __init__(self):
+    def __init__(self, fs, fs_ctrl):
         super(QubeBase, self).__init__()
         self.state_space = gym.spaces.Box(low=-self.state_max,
                                           high=self.state_max,
@@ -58,18 +55,54 @@ class QubeBase(gym.Env):
                                            high=self.act_max,
                                            dtype=np.float32)
         self._state = None
+        self._fs,\
+        self._fs_ctrl,\
+        self._dt,\
+        self._n_ctrl_per_step = self._init_timing(fs, fs_ctrl)
 
-    def _snd_rcv(self, a):
+    @staticmethod
+    def _init_timing(fs, fs_ctrl):
+        dt = 1.0 / fs
+        n_ctrl_per_step = int(fs / fs_ctrl)
+        return fs, fs_ctrl, dt, n_ctrl_per_step
+
+    def _joint_lim_violation_force(self, x):
+        relu = lambda x: x * (x > 0.0)
+        up_viol = relu(x[0] - self.state_max[0]) - relu(x[0] - self.th_jlim)
+        dn_viol = -relu(-x[0] - self.state_max[0]) + relu(-x[0] - self.th_jlim)
+        if (x[0] > self.th_jlim and x[2] > 0.0 or
+            x[0] < -self.th_jlim and x[2] < 0.0):
+            force = self.th_jlim_stiffness * (up_viol + dn_viol)
+        else:
+            force = 0.0
+        return force
+
+    def _lim_act(self, x, a):
+        a_clip = np.clip(np.r_[a], -self.act_max, self.act_max)
+        joint_lim_force = self._joint_lim_violation_force(x)
+        a_total = a_clip + joint_lim_force
+        return np.clip(a_total, -self.act_max, self.act_max)
+
+    def _sim_step(self, x, a):
         raise NotImplementedError
-    
+
+    def _ctrl_step(self, a):
+        x = self._state
+        a_cmd = None
+        for _ in range(self._n_ctrl_per_step):
+            a_cmd = self._lim_act(x, a)
+            x = self._sim_step(x, a_cmd)
+        return x, a_cmd  # Note: last commanded action is returned
+
     def step(self, a):
-        cost = 10.0 * (self._state[1] % (2 * np.pi) - np.pi) ** 2 \
-               + 0.1 * self._state[3] ** 2 + 0.001 * a ** 2
-        self._state, act = self._snd_rcv(a)
+        th, al, thd, ald = self._state
+        cost = 1e1 * (al % (2 * np.pi) - np.pi) ** 2 + 1e-1 * ald ** 2 \
+               + 5e-1 * th ** 2 + 1e-2 * thd + 1e-3 * a ** 2
+        self._state, act = self._ctrl_step(a)
         obs = np.r_[np.cos(self._state[0]), np.sin(self._state[0]),
                     np.cos(self._state[1]), np.sin(self._state[1]),
                     self._state[2], self._state[3]]
-        return obs, -cost / self.fs, False, {'s': self._state, 'a': act}
+        return obs, -cost / self._fs_ctrl, False, {'s': self._state, 'a': act}
 
 
 class PDCtrl:
@@ -154,7 +187,7 @@ class GoToLimCtrl:
         self.sign = 1 if positive else -1
         self.u_max = 0.8
         self.cnt = 0
-        self.max_cnt = 10
+        self.max_cnt = 100
 
     def __call__(self, x):
         if self.cnt < self.max_cnt:
@@ -195,7 +228,7 @@ class CalibrCtrl:
 class EnergyCtrl:
     """Nonlinear energy shaping controller for a swing up."""
 
-    def __init__(self, mu=50.0, Er=0.025):
+    def __init__(self, mu=50.0, Er=0.024):
         self.mu = mu  # P-gain on the energy (m/s/J)
         self.Er = Er  # reference energy (J)
 
@@ -225,7 +258,6 @@ class SwingUpCtrl:
         x = np.r_[np.arctan2(sin_th, cos_th),
                   np.arctan2(sin_al, cos_al),
                   th_d, al_d]
-
         if np.abs(cos_al + 1.0) < self.cos_al_delta:
             x[1] = x[1] % (2 * np.pi) - np.pi
             return self.pd_ctrl(x)
