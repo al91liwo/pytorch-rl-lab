@@ -1,11 +1,12 @@
 import numpy as np
 import matplotlib.pyplot as plt
 import gym
-from qube.base import SwingUpCtrl
+from qube import GentlyTerminating, SwingUpCtrl
 
 plt.style.use('seaborn')
 
-env = gym.make('QubeRR-v0')
+
+env = GentlyTerminating(gym.make('QubeRR-v0'))
 
 ctrl = SwingUpCtrl()
 obs = env.reset()
@@ -17,7 +18,6 @@ while not done:
     obs, rwd, done, info = env.step(act)
     s_all.append(info['s'])
     a_all.append(info['a'])
-env.step(0.0)
 
 env.close()
 
@@ -28,11 +28,13 @@ s_all = np.stack(s_all)
 a_all = np.stack(a_all)
 
 n_points = s_all.shape[0]
-t = np.linspace(0, n_points / env.unwrapped._fs_ctrl, n_points)
+t = np.linspace(0, n_points * env.unwrapped.timing.dt_ctrl, n_points)
 for i in range(4):
-    axes[i].plot(t, s_all.T[i], label=env.unwrapped.state_labels[i], c=f'C{i}')
+    state_labels = env.unwrapped.state_space.labels[i]
+    axes[i].plot(t, s_all.T[i], label=state_labels, c=f'C{i}')
     axes[i].legend(loc='lower right')
-axes[4].plot(t, a_all.T[0], label=env.unwrapped.act_labels[0], c=f'C{4}')
+action_labels = env.unwrapped.action_space.labels[0]
+axes[4].plot(t, a_all.T[0], label=action_labels, c=f'C{4}')
 axes[4].legend(loc='lower right')
 
 axes[0].set_ylabel('ang pos [rad]')

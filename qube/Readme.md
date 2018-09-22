@@ -1,22 +1,23 @@
 Qube environment
 ================
 
-Simulation and control of Quanser Qube (a.k.a. Furuta Pendulum).
-Tested with Python 3.6.5.
+Simulation and control environment for the Quanser Qube (Furuta Pendulum).
+Tested with Python 3.6.5 on Mac and Ubuntu.
 
 
 Package contents
 ----------------
-1. `doc.pdf` physical model specification
-2. `base.py` common functionality and controllers
+1. `model.pdf` physical model specification
+2. `base.py` common functionality between simulation and the real robot
 3. `qube.py` simulated environment
 4. `qube_rr.py` real robot environment
-5. `examples` show how to use the environments
+5. `ctrl.py` baseline swing-up controller and other controllers
+6. `examples` several simple demonstrations
 
 
 Simulation
 ----------
-Start a simulated swing-up demo
+Start a simulated swing-up demo to see Qube in action
 
     python3 qube/examples/swing-up.py
 
@@ -55,7 +56,6 @@ Here is the canonical way of using the real robot environment
     while not done:
         act = ctrl(obs)
         obs, rwd, done, info = env.step(act)
-    env.step(0.0)
 
 Pay attention to the following important points:
 
@@ -63,7 +63,8 @@ Pay attention to the following important points:
   in a loop. If you forget to reset the environment and then send an action
   after some time of inactivity, you will get an outdated observation.
   
-- Send a zero command `env.step(0.0)` at the end of the control loop.
-  The robot will keep executing the last command it received.
-  The motor of the robot may get damaged if a constant non-zero voltage
-  gets applied for too long.
+- Send a zero command `env.step(0.0)` at the end of your control loop.
+  The robot will keep executing the last command it received,
+  which may damage the motor if a constant voltage is applied for too long.
+  Use the `GentlyTerminating` environment wrapper, as shown in the example
+  script `swing-up_rr.py`, in order to ensure proper episode termination.

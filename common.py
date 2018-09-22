@@ -84,7 +84,8 @@ class VelocityFilter:
     def set_initial_state(self, x_init):
         """
         This method can be used to set the initial state of the velocity filter.
-        This is useful when the initial (position) observation has been retrieved and it is non-zero.
+        This is useful when the initial (position) observation
+        has been retrieved and it is non-zero.
         Otherwise the filter would assume a very high velocity.
         :param x_init: initial observation
         """

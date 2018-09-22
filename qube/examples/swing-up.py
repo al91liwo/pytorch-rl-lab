@@ -1,5 +1,5 @@
 import gym
-from qube.base import SwingUpCtrl
+from qube import SwingUpCtrl
 
 env = gym.make('Qube-v0')
 
@@ -10,6 +10,5 @@ while not done:
     env.render()
     act = ctrl(obs)
     obs, _, done, _ = env.step(act)
-env.step(0.0)
 
 env.close()
