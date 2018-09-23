@@ -7,8 +7,10 @@ class QubeBase(gym.Env):
         super(QubeBase, self).__init__()
         self._state = None
         self.timing = Timing(fs, fs_ctrl)
+        self.reward_range = (0.0, self.timing.dt_ctrl)
 
         # Limits
+        safety_th_lim = 1.5
         act_max = np.array([5.0])
         state_max = np.array([2.0, 6.0 * np.pi, 30.0, 40.0])
         sens_max = np.array([2.3, np.inf])
@@ -30,7 +32,9 @@ class QubeBase(gym.Env):
             low=-act_max, high=act_max, dtype=np.float32)
 
         # Function to ensure that state and action constraints are satisfied
-        self._lim_act = ActionLimiter(self.state_space, self.action_space, 1.5)
+        self._lim_act = ActionLimiter(self.state_space,
+                                      self.action_space,
+                                      safety_th_lim)
 
     def _sim_step(self, x, a):
         raise NotImplementedError
@@ -46,7 +50,7 @@ class QubeBase(gym.Env):
     def _rwd(self, x, a):
         th, al, thd, ald = x
         al_wrap = al % (2 * np.pi) - np.pi
-        cost = al_wrap**2 + 1e-3*ald**2 + 1e-2*th**2 + 1e-2*thd**2 + 1e-5*a**2
+        cost = al_wrap**2 + 5e-3*ald**2 + 1e-2*th**2 + 2e-2*thd**2 + 1e-3*a**2
         done = not self.state_space.contains(x)
         rwd = np.exp(-cost) * self.timing.dt_ctrl
         return rwd, done
@@ -111,7 +115,7 @@ class GentlyTerminating(gym.Wrapper):
 
 class Timing:
     def __init__(self, fs, fs_ctrl):
-        fs_ctrl_min = 100.0  # minimal control rate
+        fs_ctrl_min = 50.0  # minimal control rate
         assert fs_ctrl >= fs_ctrl_min, \
             f"control frequency must be at least {fs_ctrl_min}"
         self.n_sim_per_ctrl = int(fs / fs_ctrl)

@@ -7,7 +7,7 @@ register(
     id='Qube-v0',
     entry_point='qube.qube:Qube',
     max_episode_steps=500,
-    kwargs={'fs': 200.0, 'fs_ctrl': 100.0}
+    kwargs={'fs': 100.0, 'fs_ctrl': 50.0}
 )
 
 register(
