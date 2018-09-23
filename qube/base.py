@@ -169,7 +169,7 @@ class QubeDynamics:
         self.Dr = 5e-6  # viscous damping (N-m-s/rad), original: 0.0015
 
         # Pendulum link
-        self.Mp = 0.024  # mass (kg), original: 0.024
+        self.Mp = 0.024  # mass (kg)
         self.Lp = 0.129  # length (m)
         self.Jp = self.Mp * self.Lp ** 2 / 12  # inertia about COM (kg-m^2)
         self.Dp = 1e-6  # viscous damping (N-m-s/rad), original: 0.0005
