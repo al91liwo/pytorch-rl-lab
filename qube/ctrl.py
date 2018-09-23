@@ -41,9 +41,9 @@ class GoToLimCtrl:
         self.th_lim = 0.0
         self.thd_max = 1e-4
         self.sign = 1 if positive else -1
-        self.u_max = 0.8
+        self.u_max = 0.9
         self.cnt = 0
-        self.max_cnt = 100
+        self.max_cnt = 200
 
     def __call__(self, x):
         if self.cnt < self.max_cnt:
