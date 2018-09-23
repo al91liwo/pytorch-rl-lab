@@ -75,7 +75,7 @@ class ActionLimiter:
         self._th_lim_min = th_lim_min
         self._th_lim_max = (state_space.high[0] + self._th_lim_min) / 2.0
         self._th_lim_stiffness = \
-            2.0 * action_space.high[0] / (self._th_lim_max - self._th_lim_min)
+            1.2 * action_space.high[0] / (self._th_lim_max - self._th_lim_min)
         self._clip = lambda a: np.clip(a, action_space.low, action_space.high)
         self._relu = lambda x: x * (x > 0.0)
 
@@ -88,11 +88,15 @@ class ActionLimiter:
             force = self._th_lim_stiffness * (up + dn)
         else:
             force = 0.0
-        return force
+        return np.r_[force]
 
     def __call__(self, x, a):
-        a_total = self._clip(a) + self._joint_lim_violation_force(x)
-        return self._clip(a_total)
+        force = self._joint_lim_violation_force(x)
+        if force:
+            a_cmd = force
+        else:
+            a_cmd = self._clip(a)
+        return a_cmd
 
 
 class LabeledBox(gym.spaces.Box):
@@ -115,7 +119,7 @@ class GentlyTerminating(gym.Wrapper):
 
 class Timing:
     def __init__(self, fs, fs_ctrl):
-        fs_ctrl_min = 100.0  # minimal control rate
+        fs_ctrl_min = 50.0  # minimal control rate
         assert fs_ctrl >= fs_ctrl_min, \
             f"control frequency must be at least {fs_ctrl_min}"
         self.n_sim_per_ctrl = int(fs / fs_ctrl)
