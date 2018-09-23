@@ -10,7 +10,7 @@ class QubeBase(gym.Env):
         self.reward_range = (0.0, self.timing.dt_ctrl)
 
         # Limits
-        safety_th_lim = 1.5
+        safety_th_lim = 1.6
         act_max = np.array([5.0])
         state_max = np.array([2.0, 6.0 * np.pi, 30.0, 40.0])
         sens_max = np.array([2.3, np.inf])
@@ -115,7 +115,7 @@ class GentlyTerminating(gym.Wrapper):
 
 class Timing:
     def __init__(self, fs, fs_ctrl):
-        fs_ctrl_min = 50.0  # minimal control rate
+        fs_ctrl_min = 100.0  # minimal control rate
         assert fs_ctrl >= fs_ctrl_min, \
             f"control frequency must be at least {fs_ctrl_min}"
         self.n_sim_per_ctrl = int(fs / fs_ctrl)

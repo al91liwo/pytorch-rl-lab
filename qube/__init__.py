@@ -6,13 +6,13 @@ from gym.envs.registration import register
 register(
     id='Qube-v0',
     entry_point='qube.qube:Qube',
-    max_episode_steps=500,
-    kwargs={'fs': 100.0, 'fs_ctrl': 50.0}
+    max_episode_steps=1000,
+    kwargs={'fs': 200.0, 'fs_ctrl': 100.0}
 )
 
 register(
     id='QubeRR-v0',
     entry_point='qube.qube_rr:Qube',
-    max_episode_steps=500,
+    max_episode_steps=1000,
     kwargs={'ip': '192.172.162.1', 'fs_ctrl': 100.0}
 )
