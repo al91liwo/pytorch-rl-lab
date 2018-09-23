@@ -28,8 +28,8 @@ class Qube(QubeBase):
             self._alpha_mid = x[1]
 
         # Find theta offset by going to joint limits
-        act = CalibrCtrl()
         x = self._zero_sim_step()
+        act = CalibrCtrl(x)
         while not act.done:
             x = self._sim_step(None, [act(x)])
         self._th_mid = (act.go_right.th_lim + act.go_left.th_lim) / 2
