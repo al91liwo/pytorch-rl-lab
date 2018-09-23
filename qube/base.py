@@ -10,9 +10,9 @@ class QubeBase(gym.Env):
         self.reward_range = (0.0, self.timing.dt_ctrl)
 
         # Limits
-        safety_th_lim = 1.6
+        safety_th_lim = 1.5
         act_max = np.array([5.0])
-        state_max = np.array([2.0, 6.0 * np.pi, 30.0, 40.0])
+        state_max = np.array([2.0, 6.0 * np.pi, 20.0, 40.0])
         sens_max = np.array([2.3, np.inf])
         obs_max = np.array([np.cos(state_max[0]), np.sin(state_max[0]),
                             1.0, 1.0, state_max[2], state_max[3]])
@@ -75,7 +75,7 @@ class ActionLimiter:
         self._th_lim_min = th_lim_min
         self._th_lim_max = (state_space.high[0] + self._th_lim_min) / 2.0
         self._th_lim_stiffness = \
-            1.2 * action_space.high[0] / (self._th_lim_max - self._th_lim_min)
+            1.5 * action_space.high[0] / (self._th_lim_max - self._th_lim_min)
         self._clip = lambda a: np.clip(a, action_space.low, action_space.high)
         self._relu = lambda x: x * (x > 0.0)
 

@@ -22,9 +22,10 @@ class Qube(QubeBase):
 
         # Record alpha offset if alpha == k * 2pi (happens upon reconnect)
         x = self._zero_sim_step()
-        while np.abs(x[3]) > 1e-5:
-            x = self._zero_sim_step()
-        self._alpha_mid = x[1]
+        if np.abs(x[1]) > np.pi:
+            while np.abs(x[3]) > 1e-5:
+                x = self._zero_sim_step()
+            self._alpha_mid = x[1]
 
         # Find theta offset by going to joint limits
         act = CalibrCtrl()
