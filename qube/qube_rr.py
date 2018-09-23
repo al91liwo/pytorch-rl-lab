@@ -22,7 +22,7 @@ class Qube(QubeBase):
 
         # Record alpha offset if alpha == k * 2pi (happens upon reconnect)
         x = self._zero_sim_step()
-        while np.abs(x[3]) > 1e-6:
+        while np.abs(x[3]) > 1e-5:
             x = self._zero_sim_step()
         self._alpha_mid = x[1]
 
