@@ -1,6 +1,8 @@
 import numpy as np
 import gym
 
+np.set_printoptions(precision=6, suppress=True)
+
 
 class QubeBase(gym.Env):
     def __init__(self, fs, fs_ctrl):
@@ -12,7 +14,7 @@ class QubeBase(gym.Env):
         # Limits
         safety_th_lim = 1.5
         act_max = np.array([5.0])
-        state_max = np.array([2.0, 6.0 * np.pi, 20.0, 40.0])
+        state_max = np.array([2.0, 6.0 * np.pi, 20.0, 30.0])
         sens_max = np.array([2.3, np.inf])
         obs_max = np.array([np.cos(state_max[0]), np.sin(state_max[0]),
                             1.0, 1.0, state_max[2], state_max[3]])
@@ -75,7 +77,7 @@ class ActionLimiter:
         self._th_lim_min = th_lim_min
         self._th_lim_max = (state_space.high[0] + self._th_lim_min) / 2.0
         self._th_lim_stiffness = \
-            1.5 * action_space.high[0] / (self._th_lim_max - self._th_lim_min)
+            action_space.high[0] / (self._th_lim_max - self._th_lim_min)
         self._clip = lambda a: np.clip(a, action_space.low, action_space.high)
         self._relu = lambda x: x * (x > 0.0)
 
@@ -107,10 +109,28 @@ class LabeledBox(gym.spaces.Box):
 
 
 class GentlyTerminating(gym.Wrapper):
+    def __init__(self, env, verbose=True):
+        super(GentlyTerminating, self).__init__(env)
+        self._verbose = verbose
+        self._episode_counter = 0
+        self._total_steps = 0
+        self._total_time = 0.0
+
+    def _episode_done(self, info):
+        self._episode_counter += 1
+        self._total_steps += self.env._elapsed_steps
+        self._total_time += self.env._elapsed_seconds
+        if self._verbose:
+            print(f"    Ep {self._episode_counter}: "
+                  f"terminated in state s = {info['s']}\n"
+                  f"        total_steps = {self._total_steps} "
+                  f"total_time = {self._total_time}")
+
     def step(self, action):
         observation, reward, done, info = self.env.step(action)
         if done:
             self.env.step(np.zeros(self.env.action_space.shape))
+            self._episode_done(info)
         return observation, reward, done, info
 
     def reset(self):
@@ -174,9 +194,9 @@ class QubeDynamics:
         # Calculate vector [x, y] = tau - C(q, qd)
         trq = self.km * (voltage - self.km * thd) / self.Rm
         c0 = self._c2 * np.sin(2 * al) * thd * ald \
-             - self._c3 * np.sin(al) * ald * ald
+            - self._c3 * np.sin(al) * ald * ald
         c1 = -0.5 * self._c2 * np.sin(2 * al) * thd * thd \
-             + self._c5 * np.sin(al)
+            + self._c5 * np.sin(al)
         x = trq - self.Dr * thd - c0
         y = -self.Dp * ald - c1
 
