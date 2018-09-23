@@ -8,6 +8,7 @@ class QubeBase(gym.Env):
     def __init__(self, fs, fs_ctrl):
         super(QubeBase, self).__init__()
         self._state = None
+        self._vel_filt = None
         self.timing = Timing(fs, fs_ctrl)
         self.reward_range = (0.0, self.timing.dt_ctrl)
 
@@ -38,7 +39,16 @@ class QubeBase(gym.Env):
                                       self.action_space,
                                       safety_th_lim)
 
-    def _sim_step(self, x, a):
+    def _zero_sim_step(self):
+        return self._sim_step([0.0])
+
+    def _sim_step(self, a):
+        """
+        Update internal state of simulation and return an estimate thereof.
+
+        :param a: action
+        :return: state
+        """
         raise NotImplementedError
 
     def _ctrl_step(self, a):
@@ -46,7 +56,7 @@ class QubeBase(gym.Env):
         a_cmd = None
         for _ in range(self.timing.n_sim_per_ctrl):
             a_cmd = self._lim_act(x, a)
-            x = self._sim_step(x, a_cmd)
+            x = self._sim_step(a_cmd)
         return x, a_cmd  # return the last applied (clipped) command
 
     def _rwd(self, x, a):
@@ -77,7 +87,7 @@ class ActionLimiter:
         self._th_lim_min = th_lim_min
         self._th_lim_max = (state_space.high[0] + self._th_lim_min) / 2.0
         self._th_lim_stiffness = \
-            action_space.high[0] / (self._th_lim_max - self._th_lim_min)
+            0.5 * action_space.high[0] / (self._th_lim_max - self._th_lim_min)
         self._clip = lambda a: np.clip(a, action_space.low, action_space.high)
         self._relu = lambda x: x * (x > 0.0)
 
@@ -94,11 +104,8 @@ class ActionLimiter:
 
     def __call__(self, x, a):
         force = self._joint_lim_violation_force(x)
-        if force:
-            a_cmd = force
-        else:
-            a_cmd = self._clip(a)
-        return a_cmd
+        act = force if force else a
+        return self._clip(act)
 
 
 class LabeledBox(gym.spaces.Box):

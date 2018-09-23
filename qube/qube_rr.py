@@ -9,7 +9,6 @@ class Qube(QubeBase):
         super(Qube, self).__init__(fs=500.0, fs_ctrl=fs_ctrl)
         self._qsoc = QSocket(ip, x_len=self.sensor_space.shape[0],
                              u_len=self.action_space.shape[0])
-        self._vel_filt = None
         self._th_mid = None
         self._alpha_mid = None
 
@@ -31,16 +30,13 @@ class Qube(QubeBase):
         x = self._zero_sim_step()
         act = CalibrCtrl(x)
         while not act.done:
-            x = self._sim_step(None, [act(x)])
+            x = self._sim_step([act(x)])
         self._th_mid = (act.go_right.th_lim + act.go_left.th_lim) / 2
 
         # Set current state
         self._state = self._zero_sim_step()
 
-    def _zero_sim_step(self):
-        return self._sim_step(None, np.r_[0.0])
-
-    def _sim_step(self, _, a):
+    def _sim_step(self, a):
         _, pos = self._qsoc.snd_rcv(a)
         pos[0] -= self._th_mid
         pos[1] -= self._alpha_mid

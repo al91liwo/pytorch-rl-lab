@@ -1,10 +1,12 @@
 import numpy as np
+from common import VelocityFilter
 from .base import QubeBase, QubeDynamics
 
 
 class Qube(QubeBase):
     def __init__(self, fs, fs_ctrl):
         super(Qube, self).__init__(fs, fs_ctrl)
+        self._sim_state = None
         self._dyn = QubeDynamics()
         self._vp = None
         self._arm = None
@@ -49,17 +51,26 @@ class Qube(QubeBase):
                                retain=2000)
         return arm, pole, curve
 
-    def _sim_step(self, x, a):
-        th, al, thd, ald = x
-        thdd, aldd = self._dyn(x, a)
-        thd += self.timing.dt * thdd
-        ald += self.timing.dt * aldd
-        th += self.timing.dt * thd
-        al += self.timing.dt * ald
-        return np.r_[th, al, thd, ald]
+    def _calibrate(self):
+        self._vel_filt = VelocityFilter(self.sensor_space.shape[0],
+                                        dt=self.timing.dt)
+        self._sim_state = 0.02 * np.random.randn(self.state_space.shape[0])
+        self._state = self._zero_sim_step()
+
+    def _sim_step(self, a):
+        thdd, aldd = self._dyn(self._sim_state, a)
+        # Update internal simulation state
+        self._sim_state[3] += self.timing.dt * aldd
+        self._sim_state[2] += self.timing.dt * thdd
+        self._sim_state[1] += self.timing.dt * self._sim_state[3]
+        self._sim_state[0] += self.timing.dt * self._sim_state[2]
+        # Pretend to only observe position and obtain velocity by filtering
+        pos = self._sim_state[:2]
+        vel = self._vel_filt(pos)
+        return np.r_[pos, vel]
 
     def reset(self):
-        self._state = 0.05 * np.random.randn(self.state_space.shape[0])
+        self._calibrate()
         if self._curve is not None:
             self._curve.clear()
         return self.step(0.0)[0]
