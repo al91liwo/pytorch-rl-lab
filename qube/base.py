@@ -124,7 +124,7 @@ class GentlyTerminating(gym.Wrapper):
             print(f"    Ep {self._episode_counter}: "
                   f"terminated in state s = {info['s']}\n"
                   f"        total_steps = {self._total_steps} "
-                  f"total_time = {self._total_time}")
+                  f"total_time = {self._total_time:{5}.{4}}")
 
     def step(self, action):
         observation, reward, done, info = self.env.step(action)
