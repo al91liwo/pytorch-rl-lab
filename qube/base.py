@@ -14,7 +14,7 @@ class QubeBase(gym.Env):
         # Limits
         safety_th_lim = 1.5
         act_max = np.array([5.0])
-        state_max = np.array([2.0, 6.0 * np.pi, 20.0, 30.0])
+        state_max = np.array([2.0, 6.0 * np.pi, 30.0, 40.0])
         sens_max = np.array([2.3, np.inf])
         obs_max = np.array([np.cos(state_max[0]), np.sin(state_max[0]),
                             1.0, 1.0, state_max[2], state_max[3]])
@@ -120,10 +120,10 @@ class GentlyTerminating(gym.Wrapper):
         self._episode_counter += 1
         self._total_steps += self.env._elapsed_steps
         self._total_time += self.env._elapsed_seconds
-        if self._verbose:
-            print(f"    Ep {self._episode_counter}: "
+        if self._verbose and self._episode_counter % 10 == 0:
+            print(f"  Ep {self._episode_counter}: "
                   f"terminated in state s = {info['s']}\n"
-                  f"        total_steps = {self._total_steps} "
+                  f"      total_steps = {self._total_steps} "
                   f"total_time = {self._total_time:{5}.{4}}")
 
     def step(self, action):
@@ -169,7 +169,7 @@ class QubeDynamics:
         self.Dr = 5e-6  # viscous damping (N-m-s/rad), original: 0.0015
 
         # Pendulum link
-        self.Mp = 0.020  # mass (kg), original: 0.024
+        self.Mp = 0.024  # mass (kg), original: 0.024
         self.Lp = 0.129  # length (m)
         self.Jp = self.Mp * self.Lp ** 2 / 12  # inertia about COM (kg-m^2)
         self.Dp = 1e-6  # viscous damping (N-m-s/rad), original: 0.0005
