@@ -88,29 +88,31 @@ class CalibrCtrl:
 class EnergyCtrl:
     """PD controller on energy."""
 
-    def __init__(self, mu, Er):
-        self.mu = mu  # P-gain on the energy (m/s/J)
+    def __init__(self, Er, mu, a_max):
         self.Er = Er  # reference energy (J)
-        dyn = QubeDynamics()
-        self.Ek = lambda alpha_dot: 0.5 * dyn.Jp * alpha_dot ** 2
-        pot_en_const = 0.5 * dyn.Mp * dyn.Lp * dyn.g
-        self.Ep = lambda alpha: pot_en_const * (1.0 - np.cos(alpha))
-        self.volt = lambda acc: -dyn.Mr * dyn.Lr * acc * dyn.Rm / dyn.kt
+        self.mu = mu  # P-gain on the energy (m/s/J)
+        self.a_max = a_max  # max acceleration of the pendulum pivot (m/s^2)
+        self._dyn = QubeDynamics()  # dynamics parameters of the robot
 
     def __call__(self, x):
-        _, alpha, _, alpha_dot = x
-        E = self.Ek(alpha_dot) + self.Ep(alpha)
-        acc = self.mu * (self.Er - E) * np.sign(alpha_dot * np.cos(alpha))
-        return self.volt(acc)
+        _, al, _, ald = x
+        Ek = 0.5 * self._dyn.Jp * ald ** 2
+        Ep = 0.5 * self._dyn.Mp * self._dyn.g * self._dyn.Lp * (1 - np.cos(al))
+        E = Ek + Ep
+        acc = np.clip(self.mu * (self.Er - E) * np.sign(ald * np.cos(al)),
+                      -self.a_max, self.a_max)
+        trq = self._dyn.Mr * self._dyn.Lr * acc
+        voltage = -self._dyn.Rm / self._dyn.kt * trq
+        return voltage
 
 
 class SwingUpCtrl:
     """Hybrid controller (EnergyCtrl, PDCtrl) switching based on alpha."""
 
-    def __init__(self, ref_energy=0.028, energy_gain=50.0,
+    def __init__(self, ref_energy=0.028, energy_gain=50.0, acc_max=5.0,
                  alpha_max_pd_enable=20.0, pd_gain=None):
         # Set up the energy pumping controller
-        self.en_ctrl = EnergyCtrl(mu=energy_gain, Er=ref_energy)
+        self.en_ctrl = EnergyCtrl(ref_energy, energy_gain, acc_max)
         # Set up the PD controller
         cos_al_delta = 1.0 + np.cos(np.pi - np.deg2rad(alpha_max_pd_enable))
         self.pd_enabled = lambda cos_al: np.abs(1.0 + cos_al) < cos_al_delta
