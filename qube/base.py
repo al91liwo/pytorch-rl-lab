@@ -116,28 +116,10 @@ class LabeledBox(gym.spaces.Box):
 
 
 class GentlyTerminating(gym.Wrapper):
-    def __init__(self, env, verbose=True):
-        super(GentlyTerminating, self).__init__(env)
-        self._verbose = verbose
-        self._episode_counter = 0
-        self._total_steps = 0
-        self._total_time = 0.0
-
-    def _episode_done(self, info):
-        self._episode_counter += 1
-        self._total_steps += self.env._elapsed_steps
-        self._total_time += self.env._elapsed_seconds
-        if self._verbose and self._episode_counter % 10 == 0:
-            print(f"  Ep {self._episode_counter}: "
-                  f"terminated in state s = {info['s']}\n"
-                  f"      total_steps = {self._total_steps} "
-                  f"total_time = {self._total_time:{5}.{4}}")
-
     def step(self, action):
         observation, reward, done, info = self.env.step(action)
         if done:
             self.env.step(np.zeros(self.env.action_space.shape))
-            self._episode_done(info)
         return observation, reward, done, info
 
     def reset(self):
