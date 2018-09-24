@@ -2,6 +2,7 @@ import socket
 import struct
 import numpy as np
 from scipy import signal
+import gym
 
 
 class QSocket:
@@ -98,3 +99,27 @@ class VelocityFilter:
     def __call__(self, x):
         xd, self.z = signal.lfilter(self.b, self.a, x[None, :], 0, self.z)
         return xd.ravel()
+
+
+class LabeledBox(gym.spaces.Box):
+    """
+    Adds `labels` field to gym.spaces.Box to keep track of variable names.
+    """
+    def __init__(self, labels, **kwargs):
+        super(LabeledBox, self).__init__(**kwargs)
+        assert len(labels) == self.high.size
+        self.labels = labels
+
+
+class GentlyTerminating(gym.Wrapper):
+    """
+    This env wrapper sends zero command to the robot when an episode is done.
+    """
+    def step(self, action):
+        observation, reward, done, info = self.env.step(action)
+        if done:
+            self.env.step(np.zeros(self.env.action_space.shape))
+        return observation, reward, done, info
+
+    def reset(self):
+        return self.env.reset()
