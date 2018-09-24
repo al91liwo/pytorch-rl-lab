@@ -31,10 +31,10 @@ n_points = s_all.shape[0]
 t = np.linspace(0, n_points * env.unwrapped.timing.dt_ctrl, n_points)
 for i in range(4):
     state_labels = env.unwrapped.state_space.labels[i]
-    axes[i].plot(t, s_all.T[i], label=state_labels, c=f'C{i}')
+    axes[i].plot(t, s_all.T[i], label=state_labels, c='C{}'.format(i))
     axes[i].legend(loc='lower right')
 action_labels = env.unwrapped.action_space.labels[0]
-axes[4].plot(t, a_all.T[0], label=action_labels, c=f'C{4}')
+axes[4].plot(t, a_all.T[0], label=action_labels, c='C{}'.format(4))
 axes[4].legend(loc='lower right')
 
 axes[0].set_ylabel('ang pos [rad]')

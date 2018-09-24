@@ -130,7 +130,7 @@ class Timing:
     def __init__(self, fs, fs_ctrl):
         fs_ctrl_min = 50.0  # minimal control rate
         assert fs_ctrl >= fs_ctrl_min, \
-            f"control frequency must be at least {fs_ctrl_min}"
+            "control frequency must be at least {}".format(fs_ctrl_min)
         self.n_sim_per_ctrl = int(fs / fs_ctrl)
         assert fs == fs_ctrl * self.n_sim_per_ctrl, \
             "sampling frequency must be a multiple of the control frequency"
