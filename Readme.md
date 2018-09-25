@@ -33,7 +33,6 @@ Requirements
 The main requirement comes from the 3D graphics library `vpython` which
 is used for rendering the environments. It requires Python >= 3.5.3
 (preferably Pyton 3.6.5).
-
 Note that the default version of Python on Ubuntu 16.04 is Python 3.5.2,
 so visualization will not work with it.
 You can still use the environments though, just don't call `env.render()`.
