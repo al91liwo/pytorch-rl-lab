@@ -40,5 +40,12 @@ You can still use the environments though, just don't call `env.render()`.
 
 Developers and Maintainers
 --------------------------
-Awesome stuff developed by Boris Belousov, Fabio Muratore, and Hany Abdulsamad.
+Awesome stuff developed by
+- Boris Belousov
+- Fabio Muratore
+- Hany Abdulsamad
+- Jonas Eschmann
+- Robin Menzenbach
+- Christian Eilers
+
 Add your name if you contributed, so that we know whom to blame.
