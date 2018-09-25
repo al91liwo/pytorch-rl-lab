@@ -2,7 +2,6 @@ Qube environment
 ================
 
 Simulation and control environment for the Quanser Qube (Furuta Pendulum).
-Tested with Python 3.6.5 on Mac and Ubuntu.
 
 To see Qube in action, start the simulated swing-up demo
 
@@ -19,8 +18,8 @@ Package contents
 6. `examples` example scripts
 
 
-Controlling real robot
-----------------------
+Controlling the real robot
+--------------------------
 To control the real robot, you must be in the same local network
 with the control PC of the Qube.
 The easiest way is to connect directly via an Ethernet cable.
