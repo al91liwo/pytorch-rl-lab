@@ -11,7 +11,6 @@ class QubeBase(gym.Env):
         self._state = None
         self._vel_filt = None
         self.timing = Timing(fs, fs_ctrl)
-        self.reward_range = (0.0, self.timing.dt_ctrl)
 
         # Limits
         safety_th_lim = 1.5
@@ -34,6 +33,7 @@ class QubeBase(gym.Env):
         self.action_space = LabeledBox(
             labels=('volts',),
             low=-act_max, high=act_max, dtype=np.float32)
+        self.reward_range = (0.0, self.timing.dt_ctrl)
 
         # Function to ensure that state and action constraints are satisfied
         self._lim_act = ActionLimiter(self.state_space,

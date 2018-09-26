@@ -9,37 +9,33 @@ class Qube(QubeBase):
         super(Qube, self).__init__(fs=500.0, fs_ctrl=fs_ctrl)
         self._qsoc = QSocket(ip, x_len=self.sensor_space.shape[0],
                              u_len=self.action_space.shape[0])
-        self._th_mid = None
-        self._alpha_mid = None
+        self._sens_offset = None
 
     def _calibrate(self):
         # Reset calibration
         self._vel_filt = VelocityFilter(self.sensor_space.shape[0])
-        self._th_mid = 0.0
-        self._alpha_mid = 0.0
-        self._state = np.zeros(self.state_space.shape[0])
+        self._sens_offset = np.zeros(self.sensor_space.shape[0])
 
         # Record alpha offset if alpha == k * 2pi (happens upon reconnect)
         x = self._zero_sim_step()
         if np.abs(x[1]) > np.pi:
             while np.abs(x[3]) > 1e-5:
                 x = self._zero_sim_step()
-            self._alpha_mid = x[1]
+            self._sens_offset[1] = x[1]
 
         # Find theta offset by going to joint limits
         x = self._zero_sim_step()
         act = CalibrCtrl(x)
         while not act.done:
             x = self._sim_step([act(x)])
-        self._th_mid = (act.go_right.th_lim + act.go_left.th_lim) / 2
+        self._sens_offset[0] = (act.go_right.th_lim + act.go_left.th_lim) / 2
 
         # Set current state
         self._state = self._zero_sim_step()
 
     def _sim_step(self, a):
         _, pos = self._qsoc.snd_rcv(a)
-        pos[0] -= self._th_mid
-        pos[1] -= self._alpha_mid
+        pos -= self._sens_offset
         return np.r_[pos, self._vel_filt(pos)]
 
     def reset(self):
