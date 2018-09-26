@@ -6,8 +6,8 @@ from .base import QubeBase, QubeDynamics
 class Qube(QubeBase):
     def __init__(self, fs, fs_ctrl):
         super(Qube, self).__init__(fs, fs_ctrl)
-        self._sim_state = None
         self._dyn = QubeDynamics()
+        self._sim_state = None
         self._vp = None
         self._arm = None
         self._pole = None

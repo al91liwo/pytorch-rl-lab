@@ -102,7 +102,7 @@ class EnergyCtrl:
         acc = np.clip(self.mu * (self.Er - E) * np.sign(ald * np.cos(al)),
                       -self.a_max, self.a_max)
         trq = self._dyn.Mr * self._dyn.Lr * acc
-        voltage = -self._dyn.Rm / self._dyn.kt * trq
+        voltage = -self._dyn.Rm / self._dyn.km * trq
         return voltage
 
 
