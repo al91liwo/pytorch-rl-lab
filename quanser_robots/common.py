@@ -29,11 +29,12 @@ class QSocket:
         :param u: control vector
         :return: t, x: timestamp, vector of measured states
         """
+        # TODO: Check that sending np.float32 is not worse than np.float64
         self._soc.send(struct.pack(self._u_fmt, *u))
         data = self._soc.recv(self._buf_size)
         q = struct.unpack(self._x_fmt, data)
         t = q[0]
-        x = np.array(q[1:])
+        x = np.array(q[1:], dtype=np.float32)
         return t, x
 
     def open(self):
@@ -75,10 +76,10 @@ class VelocityFilter:
         :param x_init: initial observation of the signal to filter
         """
         derivative_filter = signal.cont2discrete((num, den), dt)
-        self.b = derivative_filter[0].ravel()
-        self.a = derivative_filter[1]
+        self.b = derivative_filter[0].ravel().astype(np.float32)
+        self.a = derivative_filter[1].astype(np.float32)
         if x_init is None:
-            self.z = np.zeros((1, x_len))
+            self.z = np.zeros((1, x_len), dtype=np.float32)
         else:
             self.set_initial_state(x_init)
 

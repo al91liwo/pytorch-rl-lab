@@ -109,7 +109,7 @@ class EnergyCtrl:
 class SwingUpCtrl:
     """Hybrid controller (EnergyCtrl, PDCtrl) switching based on alpha."""
 
-    def __init__(self, ref_energy=0.028, energy_gain=50.0, acc_max=5.0,
+    def __init__(self, ref_energy=0.029, energy_gain=50.0, acc_max=4.0,
                  alpha_max_pd_enable=20.0, pd_gain=None):
         # Set up the energy pumping controller
         self.en_ctrl = EnergyCtrl(ref_energy, energy_gain, acc_max)

@@ -14,11 +14,12 @@ class QubeBase(gym.Env):
 
         # Limits
         safety_th_lim = 1.5
-        act_max = np.array([5.0])
-        state_max = np.array([2.0, 4.0 * np.pi, 30.0, 40.0])
-        sens_max = np.array([2.3, np.inf])
+        act_max = np.array([5.0], dtype=np.float32)
+        state_max = np.array([2.0, 4.0 * np.pi, 30.0, 40.0], dtype=np.float32)
+        sens_max = np.array([2.3, np.inf], dtype=np.float32)
         obs_max = np.array([np.cos(state_max[0]), np.sin(state_max[0]),
-                            1.0, 1.0, state_max[2], state_max[3]])
+                            1.0, 1.0, state_max[2], state_max[3]],
+                           dtype=np.float32)
 
         # Spaces
         self.sensor_space = LabeledBox(
@@ -71,9 +72,9 @@ class QubeBase(gym.Env):
     def step(self, a):
         rwd, done = self._rwd(self._state, a)
         self._state, act = self._ctrl_step(a)
-        obs = np.r_[np.cos(self._state[0]), np.sin(self._state[0]),
-                    np.cos(self._state[1]), np.sin(self._state[1]),
-                    self._state[2], self._state[3]]
+        obs = np.array([np.cos(self._state[0]), np.sin(self._state[0]),
+                        np.cos(self._state[1]), np.sin(self._state[1]),
+                        self._state[2], self._state[3]], dtype=np.float32)
         return obs, rwd, done, {'s': self._state, 'a': act}
 
     def reset(self):
@@ -114,12 +115,11 @@ class ActionLimiter:
             force = self._th_lim_stiffness * (up + dn)
         else:
             force = 0.0
-        return np.r_[force]
+        return force
 
     def __call__(self, x, a):
         force = self._joint_lim_violation_force(x)
-        act = force if force else a
-        return self._clip(act)
+        return self._clip(force if force else a)
 
 
 class QubeDynamics:

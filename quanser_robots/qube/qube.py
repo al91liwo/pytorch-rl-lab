@@ -53,7 +53,8 @@ class Qube(QubeBase):
     def _calibrate(self):
         self._vel_filt = VelocityFilter(self.sensor_space.shape[0],
                                         dt=self.timing.dt)
-        self._sim_state = 0.02 * np.random.randn(self.state_space.shape[0])
+        self._sim_state = \
+            0.01*np.random.randn(self.state_space.shape[0]).astype(np.float32)
         self._state = self._zero_sim_step()
 
     def _sim_step(self, a):
@@ -66,7 +67,7 @@ class Qube(QubeBase):
         # Pretend to only observe position and obtain velocity by filtering
         pos = self._sim_state[:2]
         vel = self._vel_filt(pos)
-        return np.r_[pos, vel]
+        return np.concatenate([pos, vel])
 
     def reset(self):
         self._calibrate()

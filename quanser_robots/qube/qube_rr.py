@@ -14,7 +14,8 @@ class Qube(QubeBase):
     def _calibrate(self):
         # Reset calibration
         self._vel_filt = VelocityFilter(self.sensor_space.shape[0])
-        self._sens_offset = np.zeros(self.sensor_space.shape[0])
+        self._sens_offset = np.zeros(self.sensor_space.shape[0],
+                                     dtype=np.float32)
 
         # Record alpha offset if alpha == k * 2pi (happens upon reconnect)
         x = self._zero_sim_step()
@@ -36,7 +37,7 @@ class Qube(QubeBase):
     def _sim_step(self, a):
         _, pos = self._qsoc.snd_rcv(a)
         pos -= self._sens_offset
-        return np.r_[pos, self._vel_filt(pos)]
+        return np.concatenate([pos, self._vel_filt(pos)])
 
     def reset(self):
         self._qsoc.close()
