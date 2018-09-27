@@ -64,7 +64,7 @@ class QubeBase(gym.Env):
     def _rwd(self, x, a):
         th, al, thd, ald = x
         al_wrap = al % (2 * np.pi) - np.pi
-        cost = al_wrap**2 + 5e-3*ald**2 + 1e-2*th**2 + 2e-2*thd**2 + 1e-3*a**2
+        cost = al_wrap**2 + 5e-3*ald**2 + 1e-1*th**2 + 2e-2*thd**2 + 3e-3*a**2
         done = not self.state_space.contains(x)
         rwd = np.exp(-cost) * self.timing.dt_ctrl
         return rwd, done
