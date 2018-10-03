@@ -3,6 +3,7 @@ import struct
 import numpy as np
 from scipy import signal
 import gym
+from gym import spaces
 
 
 class QSocket:
@@ -102,7 +103,7 @@ class VelocityFilter:
         return xd.ravel()
 
 
-class LabeledBox(gym.spaces.Box):
+class LabeledBox(spaces.Box):
     """
     Adds `labels` field to gym.spaces.Box to keep track of variable names.
     """
