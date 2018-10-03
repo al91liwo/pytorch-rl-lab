@@ -14,12 +14,11 @@ class QubeBase(gym.Env):
 
         # Limits
         safety_th_lim = 1.5
-        act_max = np.array([5.0], dtype=np.float32)
-        state_max = np.array([2.0, 4.0 * np.pi, 30.0, 40.0], dtype=np.float32)
-        sens_max = np.array([2.3, np.inf], dtype=np.float32)
+        act_max = np.array([5.0])
+        state_max = np.array([2.0, 4.0 * np.pi, 30.0, 40.0])
+        sens_max = np.array([2.3, np.inf])
         obs_max = np.array([np.cos(state_max[0]), np.sin(state_max[0]),
-                            1.0, 1.0, state_max[2], state_max[3]],
-                           dtype=np.float32)
+                            1.0, 1.0, state_max[2], state_max[3]])
 
         # Spaces
         self.sensor_space = LabeledBox(
@@ -42,6 +41,7 @@ class QubeBase(gym.Env):
                                       safety_th_lim)
 
     def _zero_sim_step(self):
+        # TODO: Make sure sending float64 is OK with real robot interface
         return self._sim_step([0.0])
 
     def _sim_step(self, a):
@@ -63,18 +63,18 @@ class QubeBase(gym.Env):
 
     def _rwd(self, x, a):
         th, al, thd, ald = x
-        al_wrap = al % (2 * np.pi) - np.pi
-        cost = al_wrap**2 + 5e-3*ald**2 + 1e-1*th**2 + 2e-2*thd**2 + 3e-3*a**2
+        al_mod = al % (2 * np.pi) - np.pi
+        cost = al_mod**2 + 5e-3*ald**2 + 1e-1*th**2 + 2e-2*thd**2 + 3e-3*a[0]**2
         done = not self.state_space.contains(x)
         rwd = np.exp(-cost) * self.timing.dt_ctrl
-        return rwd, done
+        return np.float32(rwd), done
 
     def step(self, a):
         rwd, done = self._rwd(self._state, a)
         self._state, act = self._ctrl_step(a)
-        obs = np.array([np.cos(self._state[0]), np.sin(self._state[0]),
-                        np.cos(self._state[1]), np.sin(self._state[1]),
-                        self._state[2], self._state[3]], dtype=np.float32)
+        obs = np.float32([np.cos(self._state[0]), np.sin(self._state[0]),
+                          np.cos(self._state[1]), np.sin(self._state[1]),
+                          self._state[2], self._state[3]])
         return obs, rwd, done, {'s': self._state, 'a': act}
 
     def reset(self):

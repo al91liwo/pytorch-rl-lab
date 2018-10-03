@@ -73,7 +73,7 @@ class Qube(QubeBase):
         self._calibrate()
         if self._vis['curve'] is not None:
             self._vis['curve'].clear()
-        return self.step(0.0)[0]
+        return self.step([0.0])[0]
 
     def render(self, mode='human'):
         if self._vis['vp'] is None:
@@ -83,9 +83,7 @@ class Qube(QubeBase):
             self._vis['pole'],\
             self._vis['curve'] = self._set_gui()
         th, al, _, _ = self._state
-        arm_pos = (self._dyn.Lr * np.cos(th),
-                   self._dyn.Lr * np.sin(th),
-                   0.0)
+        arm_pos = (self._dyn.Lr * np.cos(th), self._dyn.Lr * np.sin(th), 0.0)
         pole_ax = (-self._dyn.Lp * np.sin(al) * np.sin(th),
                    self._dyn.Lp * np.sin(al) * np.cos(th),
                    -self._dyn.Lp * np.cos(al))

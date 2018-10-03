@@ -35,6 +35,7 @@ class Qube(QubeBase):
         self._state = self._zero_sim_step()
 
     def _sim_step(self, a):
+        # TODO: Make sure if a is float64, nothing breaks down
         _, pos = self._qsoc.snd_rcv(a)
         pos -= self._sens_offset
         return np.concatenate([pos, self._vel_filt(pos)])
@@ -43,7 +44,7 @@ class Qube(QubeBase):
         self._qsoc.close()
         self._qsoc.open()
         self._calibrate()
-        return self.step(0.0)[0]
+        return self.step([0.0])[0]
 
     def render(self, mode='human'):
         return
