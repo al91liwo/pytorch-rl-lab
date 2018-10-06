@@ -54,7 +54,7 @@ class Qube(QubeBase):
         self._vel_filt = VelocityFilter(self.sensor_space.shape[0],
                                         dt=self.timing.dt)
         self._sim_state = \
-            0.01*np.random.randn(self.state_space.shape[0]).astype(np.float32)
+            0.01 * np.float32(self._np_random.randn(self.state_space.shape[0]))
         self._state = self._zero_sim_step()
 
     def _sim_step(self, a):

@@ -1,5 +1,6 @@
 import numpy as np
 import gym
+from gym.utils import seeding
 from quanser_robots.common import LabeledBox
 
 np.set_printoptions(precision=6, suppress=True)
@@ -40,6 +41,10 @@ class QubeBase(gym.Env):
                                       self.action_space,
                                       safety_th_lim)
 
+        # Initialize random number generator
+        self._np_random = None
+        self.seed()
+
     def _zero_sim_step(self):
         # TODO: Make sure sending float64 is OK with real robot interface
         return self._sim_step([0.0])
@@ -68,6 +73,10 @@ class QubeBase(gym.Env):
         done = not self.state_space.contains(x)
         rwd = np.exp(-cost) * self.timing.dt_ctrl
         return np.float32(rwd), done
+
+    def seed(self, seed=None):
+        self._np_random, seed = seeding.np_random(seed)
+        return [seed]
 
     def step(self, a):
         rwd, done = self._rwd(self._state, a)
