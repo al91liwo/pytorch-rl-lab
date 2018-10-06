@@ -24,7 +24,7 @@ To control the real robot, you must be in the same local network
 with the control PC of the Qube.
 The easiest way is to connect directly via an Ethernet cable.
 By default, the control PC has the IP address `192.172.162.1`.
-The IP address can be changed in `quanser_robots/qube/__init.py__`.
+The IP address can be changed in `quanser_robots/qube/__init__.py`.
 
 To run the swing-up demo on the real robot, perform the following steps:
 
