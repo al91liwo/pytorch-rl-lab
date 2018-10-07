@@ -2,7 +2,7 @@ from setuptools import setup
 
 setup(name='quanser_robots',
       version='0.0.6',
-      description='Simulated environments and Quanser robot control interfaces',
+      description='Simulators and control interfaces for Quanser platforms',
       url='https://git.ias.informatik.tu-darmstadt.de/quanser/clients',
       author='Intelligent Autonomous Systems Lab',
       author_email='boris@robot-learning.de',
