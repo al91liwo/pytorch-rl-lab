@@ -25,14 +25,14 @@ If installation worked well, proceed to the robot-specific documentation
 
 If you are getting errors during installation that you do not know how to fix,
 check below whether the requirements are satisfied, and if necessary follow
-the [detailed installation instructions](docs/Install.md).
+the [detailed installation instructions](Install.md).
 
 
 Requirements
 ------------
-The main requirement comes from the 3D graphics library `vpython` which
-is used for rendering the environments. It requires Python >= 3.5.3
-(preferably Pyton 3.6.5).
+The main requirement comes from the graphics library `vpython`
+which is used for rendering 3D environments.
+It requires Python >= 3.5.3 (preferably Pyton 3.6.5).
 Note that the default version of Python on Ubuntu 16.04 is Python 3.5.2,
 so visualization will not work with it.
 You can still use the environments though, just don't call `env.render()`.
