@@ -58,7 +58,10 @@ class Qube(QubeBase):
         self._state = self._zero_sim_step()
 
     def _sim_step(self, a):
-        thdd, aldd = self._dyn(self._sim_state, a)
+        # Add a bit of noise to action for robustness
+        a_noisy = a + 1e-6 * np.float32(
+            self._np_random.randn(self.action_space.shape[0]))
+        thdd, aldd = self._dyn(self._sim_state, a_noisy)
         # Update internal simulation state
         self._sim_state[3] += self.timing.dt * aldd
         self._sim_state[2] += self.timing.dt * thdd
