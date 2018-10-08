@@ -30,7 +30,6 @@ class QSocket:
         :param u: control vector
         :return: t, x: timestamp, vector of measured states
         """
-        # TODO: Check that sending np.float32 is not worse than np.float64
         self._soc.send(struct.pack(self._u_fmt, *u))
         data = self._soc.recv(self._buf_size)
         q = struct.unpack(self._x_fmt, data)

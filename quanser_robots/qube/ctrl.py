@@ -70,7 +70,7 @@ class CalibrCtrl:
         self.go_center = PDCtrl()
 
     def __call__(self, x):
-        u = 0.0
+        u = [0.0]
         if not self.go_right.done:
             u = self.go_right(x)
         elif not self.go_left.done:
@@ -82,7 +82,7 @@ class CalibrCtrl:
             u = self.go_center(x)
         elif not self.done:
             self.done = True
-        return [u]
+        return u
 
 
 class EnergyCtrl:
