@@ -1,48 +1,44 @@
 import numpy as np
+from .base import BallBalancerBase, BallBalancerDynamics
 
-from quanser_clients.common import QSocket, SymmetricBoxSpace, VelocityFilter
 
+class BallBalancerSim(BallBalancerBase):
+    def __init__(self, fs, fs_ctrl):
+        super().__init__(fs, fs_ctrl)
+        self._dyn = BallBalancerDynamics()
+        self._state = None
 
-class BallBalancer:
-    def __init__(self, ip="130.83.164.119"):
-        """
-        Measurements:
-        theta_x: plate angle in rad induced by the "X Axis Servo" (angle around the negative y axis)
-        theta_y: plate angle in rad induced by the "Y Axis Servo" (angle around the negative x axis)
-        pos_x: ball position in meters along the x axis estimated by the "PGR Find Object" block from Quanser
-        pos_y: ball position in meters along the x axis estimated by the "PGR Find Object" block from Quanser
-        """
-        # Initialize spaces for measurements, states, and actions
-        self.measurement_space = SymmetricBoxSpace(
-            bound=np.array([np.pi/4.0, np.pi/4.0, 0.15, 0.15]),
-            labels=['theta_x', 'theta_y', 'pos_x', 'pos_x']
-        )
-        self.state_space = SymmetricBoxSpace(
-            bound=np.array([np.pi/4.0, np.pi/4.0, 0.15, 0.15, np.inf, np.inf, np.inf, np.inf]),
-            labels=['theta_x', 'theta_y', 'pos_x', 'pos_x', 'theta_x_dot', 'theta_y_dot', 'pos_x_dot', 'pos_x_dot']
-        )
-        self.action_space = SymmetricBoxSpace(
-            bound=np.array([5.0, 5.0]),
-            labels=('motor_V_x', 'motor_V_y')
-        )
-
-        # Initialize velocity filter
-        self.vel_filt = VelocityFilter(self.measurement_space.dim)
-
-        # Initialize communication
-        self._soc = QSocket(ip, self.measurement_space.dim, self.action_space.dim)
+    def reset(self):
+        super().reset()
+        return self.step([0.0])[0]
 
     def step(self, a):
-        """
-        Send command and receive next state.
-        """
-        t, x = self._soc.snd_rcv(self.action_space.project(a))
-        s = np.r_[x, self.vel_filt(x)]
-        return t, s
+        # Add a bit of noise to action for robustness
+        a_noisy = a + 1e-6 * np.float32(self._np_random.randn(self.action_space.shape[0]))
 
+        # Clip the action
 
-if __name__ == "__main__":
-    bb = BallBalancer()
-    t, s = bb.step(np.array([0.0, 0.0]))
-    print("t: ", t)
-    print("state: ", s)
+        state_acc, plate_angvel = self._dyn(self._sim_state, a_noisy)
+
+        # Update internal simulation state
+        self._sim_state[3] += self.timing.dt * aldd
+        self._sim_state[2] += self.timing.dt * thdd
+        self._sim_state[1] += self.timing.dt * self._sim_state[3]
+        self._sim_state[0] += self.timing.dt * self._sim_state[2]
+
+        # Integration step (symplectic Euler)
+        self.state[4:] += to.tensor([th_x_ddot, th_y_ddot, x_ddot, y_ddot]) * self._dt  # next velocity
+        self.state[:4] += self.state[4:] * self._dt  # next position
+        # Integration step (forward Euler, since we get the plate's angular velocities from the kinematics)
+        self.plate_angs += to.tensor([a_dot, b_dot]) * self._dt  # next position
+
+        # Pretend to only observe position and obtain velocity by filtering
+        pos = self._sim_state[:2]
+        vel = self._vel_filt(pos)
+        return np.concatenate([pos, vel])
+
+    def render(self, mode='human'):
+        super().render(mode)
+
+    def close(self):
+        pass
