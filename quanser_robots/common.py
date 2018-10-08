@@ -17,25 +17,22 @@ class QSocket:
         :param x_len: number of measured state variables to receive
         :param u_len: number of control variables to send
         """
-        self._x_fmt = '>' + (x_len + 1) * 'd'  # +1 is for the timestamp
+        self._x_fmt = '>' + x_len * 'd'
         self._u_fmt = '>' + u_len * 'd'
-        self._buf_size = (x_len + 1) * 8  # 8 bytes for each double
+        self._buf_size = x_len * 8  # 8 bytes for each double
         self._port = 9095  # fixed in Simulink model
         self._ip = ip
         self._soc = None
 
     def snd_rcv(self, u):
         """
-        Send u and receive (t, x).
+        Send u and receive x.
         :param u: control vector
-        :return: t, x: timestamp, vector of measured states
+        :return: x: vector of measured states
         """
         self._soc.send(struct.pack(self._u_fmt, *u))
         data = self._soc.recv(self._buf_size)
-        q = struct.unpack(self._x_fmt, data)
-        t = q[0]
-        x = np.array(q[1:], dtype=np.float32)
-        return t, x
+        return np.array(struct.unpack(self._x_fmt, data), dtype=np.float32)
 
     def open(self):
         if self._soc is None:
