@@ -197,7 +197,7 @@ def main():
     nb_iter = 100
     nb_trans = 3000
     pol_params = dict(
-        sig0=3.0,
+        sig0=5.0,
         hl_size=(64, 64),
         e_clip=0.1,
         lr=1e-3,
