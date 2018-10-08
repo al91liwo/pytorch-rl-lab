@@ -30,7 +30,7 @@ class PDCtrl:
         elif th_des and np.sqrt(all_but_th_squared) < tol / 5.0:
             # Increase P-gain on `th` when struggling to reach `th_des`
             K[0] += 0.01 * K[0]
-        return K[0]*(th_des - th) - K[1] * al - K[2] * thd - K[3] * ald
+        return [K[0]*(th_des - th) - K[1] * al - K[2] * thd - K[3] * ald]
 
 
 class GoToLimCtrl:
@@ -57,7 +57,7 @@ class GoToLimCtrl:
             if np.abs(thd) < self.thd_max and \
                     np.abs(th - self.th_init) > self.delta_th_min:
                 self.done = True
-        return self.sign * self.u_max
+        return [self.sign * self.u_max]
 
 
 class CalibrCtrl:
@@ -82,7 +82,7 @@ class CalibrCtrl:
             u = self.go_center(x)
         elif not self.done:
             self.done = True
-        return u
+        return [u]
 
 
 class EnergyCtrl:
@@ -103,14 +103,14 @@ class EnergyCtrl:
                       -self.a_max, self.a_max)
         trq = self._dyn.Mr * self._dyn.Lr * acc
         voltage = -self._dyn.Rm / self._dyn.km * trq
-        return voltage
+        return [voltage]
 
 
 class SwingUpCtrl:
     """Hybrid controller (EnergyCtrl, PDCtrl) switching based on alpha."""
 
-    def __init__(self, ref_energy=0.029, energy_gain=50.0, acc_max=4.0,
-                 alpha_max_pd_enable=20.0, pd_gain=None):
+    def __init__(self, ref_energy=0.04, energy_gain=50.0, acc_max=5.0,
+                 alpha_max_pd_enable=10.0, pd_gain=None):
         # Set up the energy pumping controller
         self.en_ctrl = EnergyCtrl(ref_energy, energy_gain, acc_max)
         # Set up the PD controller

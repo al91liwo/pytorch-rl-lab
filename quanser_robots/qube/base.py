@@ -111,7 +111,7 @@ class ActionLimiter:
         self._th_lim_min = th_lim_min
         self._th_lim_max = (state_space.high[0] + self._th_lim_min) / 2.0
         self._th_lim_stiffness = \
-            0.5 * action_space.high[0] / (self._th_lim_max - self._th_lim_min)
+            action_space.high[0] / (self._th_lim_max - self._th_lim_min)
         self._clip = lambda a: np.clip(a, action_space.low, action_space.high)
         self._relu = lambda x: x * (x > 0.0)
 

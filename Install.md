@@ -19,16 +19,17 @@ however, it can be straightforwardly adapted to any Unix-like system.
     
     More details on that can be found [here](https://askubuntu.com/questions/865554/how-do-i-install-python-3-6-using-apt-get).
 
-3. Create a virtual environment, activate it, and update it
+3. Create a virtual environment, activate it, and update it.
+   You can also use an Anaconda virtual environment.
 
         python3.6 -m venv venv3
         source venv3/bin/activate
-        pip install -U pip setuptools
+        pip3 install -U pip setuptools
 
 4. Install the `quanser_robots` package
 
         cd clients
-        pip install -e .
+        pip3 install -e .
 
 5. Check that everything works correctly by running the code snippet
    from the [main readme file](../Readme.md).

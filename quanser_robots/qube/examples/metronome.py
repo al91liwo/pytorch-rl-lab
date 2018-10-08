@@ -36,7 +36,7 @@ class MetronomeCtrl:
             u = 0.0
         else:
             u = 0.1 * self.u_max * np.sin(2 * np.pi * self.f * t)
-        return u
+        return [u]
 
 
 def main():

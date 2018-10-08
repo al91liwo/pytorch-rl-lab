@@ -28,7 +28,7 @@ class Qube(QubeBase):
         x = self._zero_sim_step()
         act = CalibrCtrl(x)
         while not act.done:
-            x = self._sim_step([act(x)])
+            x = self._sim_step(act(x))
         self._sens_offset[0] = (act.go_right.th_lim + act.go_left.th_lim) / 2
 
         # Set current state

@@ -6,11 +6,11 @@ Simulated environments and real robot interfaces for a set of Quanser platforms.
 
 Getting Started
 ---------------
-To install the package, execute
+This package is compatible with Python 3.6.5. To install the it, execute
 
-    pip install -e .
+    pip3 install -e .
 
-To confirm that the setup was successful, launch a Python console and run
+To confirm that the setup was successful, launch a Python3 console and run
     
     import gym
     import quanser_robots
