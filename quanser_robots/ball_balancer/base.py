@@ -30,6 +30,7 @@ class BallBalancerBase(gym.Env):
         """
         super(BallBalancerBase, self).__init__()
         self._state = None
+        self._vel_filt = None  # init in subclasses
         self._plate_angs = None  # auxiliary information about the plate's angular position
         self.done = None
         self._step_count = None
@@ -37,7 +38,7 @@ class BallBalancerBase(gym.Env):
         self.timing = Timing(fs, fs_ctrl)
 
         # Initialize spaces for measurements, states, and actions
-        state_max = np.array([np.pi/4., np.pi/4., 0.15, 0.15, np.pi, np.pi, 0.5, 0.5])
+        state_max = np.array([np.pi/4., np.pi/4., 0.15, 0.15, 4.*np.pi, 4.*np.pi, 0.5, 0.5])
         sens_max = state_max[:4]
         act_max = np.array([5.0, 5.0])
 
@@ -60,9 +61,6 @@ class BallBalancerBase(gym.Env):
         self.Q = np.diag([1e-2, 1e-2, 1e-0, 1e-0, 1e-4, 1e-4, 1e-2, 1e-2])  # see dim of state space
         self.R = np.diag([1e-4, 1e-4])  # see dim of action space
         self.min_rew = 1e-4
-
-        # Initialize velocity filter
-        self._vel_filt = VelocityFilter(self.sensor_space.shape[0])
 
         # Initialize random number generator
         self._np_random = None
@@ -100,6 +98,10 @@ class BallBalancerBase(gym.Env):
         return float(rew)
 
     def _is_done(self):
+        """
+        Check if the state is out of bounds or if the goal is reached.
+        :return: bool
+        """
         # Calculate the Cartesian distance to the goal position (neglect other states)
         dist = np.linalg.norm(self._state_des[2:4] - self._state[2:4], ord=2)
         if dist <= self._tol or not self.state_space.contains(self._state):
@@ -121,9 +123,9 @@ class BallBalancerBase(gym.Env):
         """
         reward_using_state = self._rew_fcn(self._state, self._curr_action) if self._step_count > 0 else np.NaN
         if mode == 'human':
-            print("step: {:3}  |  in bounds: {:1}  |  state: {}  |  action: {}  | reward: {:3}".format(
-                self._step_count, self.state_space.contains(self._state), self._state, self._curr_action,
-                reward_using_state))
+            print("step: {:3}  |  in bounds: {:1}  |  state: {}  |  plate: {} [deg]  |  action: {}  | reward: {:.3f}".format(
+                self._step_count, self.state_space.contains(self._state), self._state, self._plate_angs *180./np.pi,
+                self._curr_action, reward_using_state))
 
     def close(self):
         raise NotImplementedError
@@ -149,9 +151,9 @@ class BallBalancerDynamics:
         self.r_arm = 0.0254  # distance between the servo output gear shaft and the coupled joint [m]
         self.K_g = 70  # gear ratio [-]
         self.eta_g = 0.9  # gearbox efficiency [-]
+        self.eta_m = 0.69  # motor efficiency [-]
         self.J_l = 5.2822e-5  # moment of inertia of the load [kg*m**2]
         self.J_m = 4.6063e-7  # motor armature moment of inertia [kg*m**2]
-        self.eta_m = 0.69  # motor efficiency [-]
         self.k_m = 0.0077  # motor torque constant [N*m/A] = back-EMF constant [V*s/rad]
         self.R_m = 2.6  # motor armature resistance
         self.B_eq = 0.015  # equivalent viscous damping coefficient w.r.t. load [N*m*s/rad]

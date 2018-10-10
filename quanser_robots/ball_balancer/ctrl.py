@@ -21,29 +21,23 @@ class DummyCtrl:
         return action
 
 
-class PDCtrl:
+class QPDCtrl:
     """
-    Slightly tweaked PD controller (increases gains if `x_des` not reachable).
-
-    Accepts `th_des` and drives Qube to `x_des = (th_des, 0.0, 0.0, 0.0)`
-
-    Flag `done` is set when `|x_des - x| < tol`.
-
-    Tweak: increase P-gain on `th` if velocity is zero but the goal is still
-    not reached (useful for counteracting resistance from the power cord).
+    Reconstructing Quanser's PD-controller (see. q_2dbb_quick_start.mdl)
     """
-
     def __init__(self, kp=None, kd=None):
         """
         :param kp: constant controller feedback coefficients for error [V/m]
         :param kd: constant controller feedback coefficients for error time derivative [Vs/m]
         """
-        self.Kp = np.zeros([14., 14.]) if kp is None else np.diag(kp)
-        self.Kd = np.zeros([0., 0.]) if kd is None else np.diag(kd)
+        self.Kp = np.diag([3.45, 3.45]) if kp is None else np.diag(kp)
+        self.Kd = np.diag([2.11, 2.11]) if kd is None else np.diag(kd)
+        self.limit_rad = 0.52360  # limit for angle command; see the saturation bock in the referenced mdl-file
+        self.kp_servo = 14.  # P-control for servo angle; see the saturation bock in the referenced mdl-file
 
     def __call__(self, s, x_des=0., y_des=0.):
         """
-        Calculate the controller output. u = -K*x
+        Calculate the controller output.
         :param s: state measurement
         :param x_des: goal position [m]
         :param y_des: goal position [m]
@@ -53,6 +47,11 @@ class PDCtrl:
 
         err = np.array([x_des - x, y_des - y])
         err_dot = np.array([0. - x_dot, 0. - y_dot])
+        th_des = self.Kp.dot(err) + self.Kd.dot(err_dot)
 
-        u = -1. * (self.Kp.dot(err) + self.Kd.dot(err_dot))
-        return -u  # ask Quanser, why * -1
+        # Saturation for desired angular position
+        th_des = np.clip(th_des, -self.limit_rad, self.limit_rad)
+        err_th = th_des - np.array([th_x, th_y])
+        u = err_th * self.kp_servo
+
+        return u  # see "Actuator Electrical Dynamics" block in referenced mdl-file

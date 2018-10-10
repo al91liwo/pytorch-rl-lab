@@ -1,7 +1,7 @@
 import numpy as np
 
 from .base import BallBalancerBase, BallBalancerDynamics
-from ..common import LabeledBox
+from ..common import LabeledBox, VelocityFilter
 
 
 class BallBalancerSim(BallBalancerBase):
@@ -47,10 +47,16 @@ class BallBalancerSim(BallBalancerBase):
                     raise TypeError("Can not convert init_state to numpy array!")
         # print("Reset simulator to state {}".format(self._state))
 
+        # Initialize velocity filter
+        self._vel_filt = VelocityFilter(self.sensor_space.shape[0],
+                                        dt=self.timing.dt,
+                                        x_init=self._state.copy())
+
         # Return exact state (not estimated by velocity filter) and done = False
         return self._state.copy(), False
 
     def step(self, action):
+        info = {'action_raw': action}
         # Add a bit of noise to action for robustness
         # action = action + 1e-6 * np.float32(self._np_random.randn(self.action_space.shape[0]))
 
@@ -74,8 +80,8 @@ class BallBalancerSim(BallBalancerBase):
         obs = np.concatenate([pos, vel])
 
         reward = self._rew_fcn(obs, action)
-        done = self._is_done()
-        info = {}
+        done = self._is_done()  # uses the simulation state and not the observation
+        info.update({'state': self._state.copy()})
 
         self._step_count += 1
         return obs, reward, done, info

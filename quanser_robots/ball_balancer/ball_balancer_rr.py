@@ -1,5 +1,5 @@
 import numpy as np
-from ..common import QSocket
+from ..common import QSocket, VelocityFilter
 from .base import BallBalancerBase
 
 
@@ -11,11 +11,20 @@ class BallBalancerRR(BallBalancerBase):
         # Initialize communication
         self._qsoc = QSocket(ip, self.sensor_space.shape[0], self.action_space.shape[0])
 
+        self._tol = 0.  # disable tolerance for done flag
+
     def reset(self):
         super().reset()
         # Cancel and re-open the connection to the socket
         self._qsoc.close()
         self._qsoc.open()
+
+        # Initialize velocity filter
+        # Send actions and receive sensor measurements. One extra send & receive for initializing the filter.
+        pos_meas = self._qsoc.snd_rcv(np.array([0.0, 0.0]))
+        self._vel_filt = VelocityFilter(self.sensor_space.shape[0],
+                                        dt=self.timing.dt,
+                                        x_init=pos_meas)
 
         # Start gently with a zero action
         obs, _, done, _ = self.step(np.array([0.0, 0.0]))
@@ -26,6 +35,7 @@ class BallBalancerRR(BallBalancerBase):
         """
         Send command and receive next state.
         """
+        info = {'action_raw': action}
         # Apply action limits
         action = np.clip(action, self.action_space.low, self.action_space.high)
         self._curr_action = action
@@ -34,10 +44,14 @@ class BallBalancerRR(BallBalancerBase):
         pos_meas = self._qsoc.snd_rcv(action)
 
         # Construct the state from measurements and observer (filter)
-        state = np.r_[pos_meas, self._vel_filt(pos_meas)]
+        obs = np.r_[pos_meas, self._vel_filt(pos_meas)]
+        self._state = obs
+
+        reward = self._rew_fcn(obs, action)
+        done = self._is_done()  # uses the state estimated from measurements
 
         self._step_count += 1
-        return state
+        return obs, reward, done, info
 
     def render(self, mode='human'):
         super().render(mode)

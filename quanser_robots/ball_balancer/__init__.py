@@ -18,6 +18,6 @@ register(
 register(
     id='BallBalancerRR-v0',
     entry_point='quanser_robots.ball_balancer.ball_balancer_rr:BallBalancerRR',
-    max_episode_steps=500,
+    max_episode_steps=5000,
     kwargs={'ip': '130.83.164.52', 'fs_ctrl': 50.0}
 )
