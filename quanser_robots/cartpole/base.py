@@ -15,25 +15,25 @@ class CartpoleBase(gym.Env):
 
         # Limits
         safety_th_lim = 1.5
-        act_max = np.array([0.0])
+        act_max = np.array([10.0])
 
-        sens_min = np.array([0.0, 0.0])
-        sens_max = np.array([0.0, 0.0])
+        sens_min = np.array([-0.4, -np.pi])
+        sens_max = np.array([+0.4, +np.pi])
 
-        state_min = np.array([0.0, -np.inf, 0.0, -np.inf])
-        state_max = np.array([0.0, +np.inf, 0.0, +np.inf])
+        state_min = np.array([-0.4, -np.pi, -np.inf, -np.inf])
+        state_max = np.array([+0.4, +np.pi, +np.inf, +np.inf])
 
-        obs_min = np.array([0.0, -np.inf, 0.0, -np.inf])
-        obs_max = np.array([0.0, +np.inf, 0.0, +np.inf])
+        obs_min = np.array([-0.4, -np.pi, -np.inf,  -np.inf])
+        obs_max = np.array([+0.4, +np.pi, +np.inf,  +np.inf])
 
         # Spaces
-        # ToDo Should we add something additional to the observations?
+        # ToDo @Samuele: Should we add something additional to the observations?
         self.sensor_space = LabeledBox(
             labels=('pos', 'theta'),
             low=sens_min, high=sens_max, dtype=np.float32)
 
         self.state_space = LabeledBox(
-            labels=('x', 'x_dot', 'theta', 'theta_dot'),
+            labels=('x', 'theta', 'x_dot', 'theta_dot'),
             low=state_min, high=state_max, dtype=np.float32)
 
         self.observation_space = LabeledBox(
@@ -44,11 +44,10 @@ class CartpoleBase(gym.Env):
             labels=('volts',),
             low=-act_max, high=act_max, dtype=np.float32)
 
-        # ToDo How are we defining the reward?
+        # ToDo @Samuele: How are we defining the reward?
         self.reward_range = (0.0, self.timing.dt_ctrl)
 
         # Function to ensure that state and action constraints are satisfied:
-        # ToDo This has to be adapted!!
         self._lim_act = ActionLimiter(self.state_space, self.action_space, safety_th_lim)
 
         # Initialize random number generator
@@ -128,30 +127,21 @@ class Timing:
 
 
 class ActionLimiter:
-    def __init__(self, state_space, action_space, th_lim_min):
+    def __init__(self, state_space, action_space, x_min_dist):
 
-        self._th_lim_min = th_lim_min
-        self._th_lim_max = (state_space.high[0] + self._th_lim_min) / 2.0
-        self._th_lim_stiffness = action_space.high[0] / (self._th_lim_max - self._th_lim_min)
+        # self._th_lim_min = th_lim_min
+        # self._th_lim_max = (state_space.high[0] + self._th_lim_min) / 2.0
+        # self._th_lim_stiffness = action_space.high[0] / (self._th_lim_max - self._th_lim_min)
 
         self._clip = lambda a: np.clip(a, action_space.low, action_space.high)
         self._relu = lambda x: x * (x > 0.0)
 
-    # ToDo What is this doing?? -> This has to be redone!
-    def _joint_lim_violation_force(self, x):
-        th, _, thd, _ = x
-
-        up = self._relu(th-self._th_lim_max) - self._relu(th-self._th_lim_min)
-        dn = -self._relu(-th-self._th_lim_max)+self._relu(-th-self._th_lim_min)
-
-        if (th > self._th_lim_min and thd > 0.0 or th < -self._th_lim_min and thd < 0.0):
-            force = self._th_lim_stiffness * (up + dn)
-        else:
-            force = 0.0
-
-        return force
-
     def __call__(self, x, a):
-        force = self._joint_lim_violation_force(x)
-        return self._clip(force if force else a)
+
+        # Prevent crashing into the cart limits:
+        # ToDo => Michael
+        a_safe = a
+
+        # Clip the actions to the desired range:
+        return self._clip(a_safe)
 

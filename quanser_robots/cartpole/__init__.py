@@ -11,5 +11,5 @@ register(
     id='CartpoleRR-v0',
     entry_point='quanser_robots.cartpole.cartpole_rr:Cartpole',
     max_episode_steps=500,
-    kwargs={'ip': '192.172.162.1', 'fs_ctrl': 50.0}
+    kwargs={'ip': '130.83.164.56', 'fs_ctrl': 50.0}
 )
