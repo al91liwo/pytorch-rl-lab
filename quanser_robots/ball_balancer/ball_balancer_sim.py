@@ -50,7 +50,7 @@ class BallBalancerSim(BallBalancerBase):
         # Initialize velocity filter
         self._vel_filt = VelocityFilter(self.sensor_space.shape[0],
                                         dt=self.timing.dt,
-                                        x_init=self._state.copy())
+                                        x_init=self._state[:4].copy())
 
         # Return exact state (not estimated by velocity filter) and done = False
         return self._state.copy(), False
