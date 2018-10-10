@@ -3,8 +3,8 @@ from ..common import QSocket
 from .base import BallBalancerBase
 
 
-class BallBalancer(BallBalancerBase):
-    def __init__(self, fs_ctrl, ip="130.83.164.119"):
+class BallBalancerRR(BallBalancerBase):
+    def __init__(self, fs_ctrl, ip="130.83.164.52"):
         # Call constructor of parent class
         super().__init__(fs=500.0, fs_ctrl=fs_ctrl)
         # Initialize communication
@@ -16,18 +16,21 @@ class BallBalancer(BallBalancerBase):
         self._qsoc.close()
         self._qsoc.open()
         # Start gently with a zero action
-        return self.step(np.array([0.0, 0.0]))[0]  # first return value of step is the sate
+        obs, _, done, _ = self.step(np.array([0.0, 0.0]))
+        return obs, done
 
     def step(self, action):
         """
         Send command and receive next state.
         """
+        # Apply action limits
+        action_clipped = np.clip(action, self.action_space.low, self.action_space.high)
         # Send actions and receive sensor measurements
-        time, pos_meas = self._qsoc.snd_rcv(self.action_space.project(action))
+        pos_meas = self._qsoc.snd_rcv(action_clipped)
         # Construct the state from measurements and observer (filter)
         state = np.r_[pos_meas, self._vel_filt(pos_meas)]
         self._step_count += 1
-        return time, state
+        return state
 
     def render(self, mode='human'):
         super().render(mode)
@@ -40,7 +43,6 @@ class BallBalancer(BallBalancerBase):
 
 
 if __name__ == "__main__":
-    bb = BallBalancer()
-    t, s = bb.step(np.array([0.0, 0.0]))
-    print("t: ", t)
+    bb = BallBalancerRR()
+    s = bb.step(np.array([0.0, 0.0]))
     print("state: ", s)

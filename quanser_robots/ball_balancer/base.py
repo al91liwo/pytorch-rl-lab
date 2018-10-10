@@ -8,20 +8,29 @@ np.set_printoptions(precision=3, suppress=True)
 
 
 class BallBalancerBase(gym.Env):
-    def __init__(self, fs, fs_ctrl):
+    def __init__(self, fs, fs_ctrl, state_des=None, tol=5e-3):
         """
         Base class for the Quanser 2 DoF Ball Balancer (simulation as well as real device)
+        Note: the information about the plate's angular position is not necessary for the simlified dynamics.
+              Furthermore, it can be calculated from the inverse kinematics of the mechanism.
         Measurements:
-        theta_x: plate angle in rad induced by the X Axis Servo (angle around the negative y axis)
-        theta_y: plate angle in rad induced by the Y Axis Servo (angle around the negative x axis)
+        theta_x: x axis servo shaft angle
+        theta_y: y axis servo shaft angle
         pos_x: ball position in meters along the x axis estimated by the "PGR Find Object" block from Quanser
         pos_y: ball position in meters along the x axis estimated by the "PGR Find Object" block from Quanser
-        Action:
+        Auxiliary state info:
+        alpha: plate's angle around the negative y axis (alpha)
+        beta: plate's angle around the x axis (beta)
+        Actions:
         V_x: voltage command for the X Axis Servo
         V_y: voltage command for the Y Axis Servo
+        ---
+        :param tol: position tolerance [m]
         """
         super(BallBalancerBase, self).__init__()
         self._state = None
+        self._plate_angs = None  # auxiliary information about the plate's angular position
+        self.done = None
         self._step_count = None
         self.timing = Timing(fs, fs_ctrl)
 
@@ -43,6 +52,13 @@ class BallBalancerBase(gym.Env):
             labels=('V_x', 'V_y'),
             low=-act_max, high=act_max, dtype=np.float32)
 
+        # Goal state, rewards and done flag
+        self._state_des = np.zeros(self.state_space.shape) if state_des is None else state_des
+        self._tol = tol
+        self.Q = np.diag([1., 1., 1., 1., 1., 1., 1., 1.])  # see dim of state space
+        self.R = np.diag([1., 1.])  # see dim of action space
+        self.min_rew = 1e-4
+
         # Initialize velocity filter
         self._vel_filt = VelocityFilter(self.sensor_space.shape[0])
 
@@ -55,11 +71,36 @@ class BallBalancerBase(gym.Env):
         return [seed]
 
     def reset(self):
+        self.done = False
         self._step_count = 0
         self._state = np.zeros(self.state_space.shape)
+        self._plate_angs = np.zeros(2)
 
-    def step(self, a):
+    def step(self, action):
         raise NotImplementedError
+
+    def _rew_fcn(self, obs, action):
+        err_s = (self._state_des - obs).reshape(-1,)  # or self._state
+        err_a = action.reshape(-1,)
+        quadr_cost = err_s.dot(self.Q.dot(err_s)) + err_a.dot(self.R.dot(err_a))
+
+        obs_max = self.state_space.high.reshape(-1, )
+        act_max = self.action_space.high.reshape(-1, )
+
+        max_cost = obs_max.dot(self.Q.dot(obs_max)) + act_max.dot(self.R.dot(act_max))
+        # Compute a scaling factor that sets the current state and action in relation to the worst case
+        self.c_max = -1.0 * np.log(self.min_rew) / max_cost
+
+        # Calculate the scaled exponential
+        rew = np.exp(-self.c_max * quadr_cost)  # c_max > 0, quard_cost >= 0
+        return float(rew)
+
+    def _is_done(self):
+        dist = np.linalg.norm(self._state_des - self._state, ord=2)
+        if dist <= self._tol or not self.state_space.contains(self._state_des):
+            return True
+        else:
+            return False
 
     def render(self, mode='human'):
         """
@@ -119,12 +160,12 @@ class BallBalancerDynamics:
         """
         Nonlinear Dynamics
         :param state: the state [servo_angpos_x, servo_angpos_y, ball_pos_x, ball_pos_y,
-                             servo_angvel_x, servo_angvel_y, ball_vel_x, ball_vel_y]
+                                 servo_angvel_x, servo_angvel_y, ball_vel_x, ball_vel_y]
         :param plate_angs: angular position of the plate (additional info)
                            Note: plate_angs is not necessary in case of simplified_dyn=True
         :param action: unbounded action (no clipping in this function)
         :param simplified_dyn: flags if a dynamics model without Coriolis forces and without friction should be used
-        :return: 
+        :return: accelerations of the servo shaft angles and the ball positions
         """
         # State
         th_x = state[0]  # angle of the x axis servo (load)
@@ -141,8 +182,8 @@ class BallBalancerDynamics:
         th_y_ddot = (self.A_m * action[1] - self.B_eq_v * th_y_dot) / self.J_eq
 
         # Plate (not part of the state since it is a redundant information)
-        a = plate_angs[0] + self.ang_offset_a  # plate'state angle around the y axis (alpha)
-        b = plate_angs[1] + self.ang_offset_b  # plate'state angle around the x axis (beta)
+        a = plate_angs[0] + self.ang_offset_a  # plate's angle around the negative y axis (alpha)
+        b = plate_angs[1] + self.ang_offset_b  # plate's angle around the x axis (beta)
         a_dot = self.c_kin * th_x_dot * np.cos(th_x) / np.cos(a)  # angular velocity of the plate around the y axis
         b_dot = self.c_kin * -th_y_dot * np.cos(-th_y) / np.cos(b)  # angular velocity of the plate around the x axis
         # Plate'state angular accelerations (unused for simplified_dyn = True)
@@ -165,14 +206,14 @@ class BallBalancerDynamics:
                       ) / self.zeta
             y_ddot = (- self.c_frict * y_dot * self.r_ball ** 2  # friction
                       - self.J_ball * self.r_ball * b_ddot  # plate influence (necessary?)
-                      + self.m_ball * x * b_dot ** 2 * self.r_ball ** 2  # centripetal
+                      + self.m_ball * y * b_dot ** 2 * self.r_ball ** 2  # centripetal
                       + self.c_kin * self.m_ball * self.g * self.r_ball ** 2 * np.sin(th_y)  # gravity
                       ) / self.zeta
 
         # Return the state accelerations / plate velocities and do the integration outside this function
-        state_acc = np.array([th_x_ddot, th_y_ddot, x_ddot, y_ddot])
+        accs = np.array([th_x_ddot, th_y_ddot, x_ddot, y_ddot])
         plate_angvel = np.array([a_dot, b_dot])
-        return state_acc, plate_angvel
+        return accs, plate_angvel
 
 
 class Timing:
