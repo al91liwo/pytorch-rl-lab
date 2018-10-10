@@ -54,4 +54,5 @@ class PDCtrl:
         err = np.array([x_des - x, y_des - y])
         err_dot = np.array([0. - x_dot, 0. - y_dot])
 
-        return -1. * (self.Kd.dot(err) + self.Kp.dot(err_dot))
+        u = -1. * (self.Kp.dot(err) + self.Kd.dot(err_dot))
+        return -u  # ask Quanser, why * -1

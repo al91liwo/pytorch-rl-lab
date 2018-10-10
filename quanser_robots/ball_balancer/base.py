@@ -25,6 +25,7 @@ class BallBalancerBase(gym.Env):
         V_x: voltage command for the X Axis Servo
         V_y: voltage command for the Y Axis Servo
         ---
+        :param state_des: goal state
         :param tol: position tolerance [m]
         """
         super(BallBalancerBase, self).__init__()
@@ -32,10 +33,11 @@ class BallBalancerBase(gym.Env):
         self._plate_angs = None  # auxiliary information about the plate's angular position
         self.done = None
         self._step_count = None
+        self._curr_action = None  # only for plotting
         self.timing = Timing(fs, fs_ctrl)
 
         # Initialize spaces for measurements, states, and actions
-        state_max = np.array([np.pi/4., np.pi/4., 0.15, 0.15, np.inf, np.inf, np.inf, np.inf])
+        state_max = np.array([np.pi/4., np.pi/4., 0.15, 0.15, np.pi, np.pi, 0.5, 0.5])
         sens_max = state_max[:4]
         act_max = np.array([5.0, 5.0])
 
@@ -55,8 +57,8 @@ class BallBalancerBase(gym.Env):
         # Goal state, rewards and done flag
         self._state_des = np.zeros(self.state_space.shape) if state_des is None else state_des
         self._tol = tol
-        self.Q = np.diag([1., 1., 1., 1., 1., 1., 1., 1.])  # see dim of state space
-        self.R = np.diag([1., 1.])  # see dim of action space
+        self.Q = np.diag([1e-2, 1e-2, 1e-0, 1e-0, 1e-4, 1e-4, 1e-2, 1e-2])  # see dim of state space
+        self.R = np.diag([1e-4, 1e-4])  # see dim of action space
         self.min_rew = 1e-4
 
         # Initialize velocity filter
@@ -64,15 +66,17 @@ class BallBalancerBase(gym.Env):
 
         # Initialize random number generator
         self._np_random = None
-        self.seed()
+        # self.seed()
 
     def seed(self, seed=None):
         self._np_random, seed = seeding.np_random(seed)
         return [seed]
 
     def reset(self):
+        # Reset the time and done flag
         self.done = False
         self._step_count = 0
+        # Reset the state
         self._state = np.zeros(self.state_space.shape)
         self._plate_angs = np.zeros(2)
 
@@ -96,8 +100,17 @@ class BallBalancerBase(gym.Env):
         return float(rew)
 
     def _is_done(self):
-        dist = np.linalg.norm(self._state_des - self._state, ord=2)
-        if dist <= self._tol or not self.state_space.contains(self._state_des):
+        # Calculate the Cartesian distance to the goal position (neglect other states)
+        dist = np.linalg.norm(self._state_des[2:4] - self._state[2:4], ord=2)
+        if dist <= self._tol or not self.state_space.contains(self._state):
+            if dist <= self._tol:
+                print("-- Done: reached goal position!")
+                print("distance: ", dist)
+            if not self.state_space.contains(self._state):
+                print("-- Done: out of bounds!")
+                print("min state : ", self.state_space.low)
+                print("last state: ", self._state)
+                print("max state : ", self.state_space.high)
             return True
         else:
             return False
@@ -106,15 +119,11 @@ class BallBalancerBase(gym.Env):
         """
         Cheap print to console
         """
+        reward_using_state = self._rew_fcn(self._state, self._curr_action) if self._step_count > 0 else np.NaN
         if mode == 'human':
-            print("step: {:3}  |  in bounds: {:1}  |  state: {}".format(
-                self._step_count, self.state_space.contains(self._state), self._state))
-            # If the positions are out of bound
-            if not self.state_space.contains(self._state):
-                np.set_printoptions(precision=3, suppress=True)
-                print("min state : ", self.state_space.low)
-                print("last state: ", self._state)
-                print("max state : ", self.state_space.high)
+            print("step: {:3}  |  in bounds: {:1}  |  state: {}  |  action: {}  | reward: {:3}".format(
+                self._step_count, self.state_space.contains(self._state), self._state, self._curr_action,
+                reward_using_state))
 
     def close(self):
         raise NotImplementedError
@@ -124,7 +133,13 @@ class BallBalancerDynamics:
     """
     Modeling the dynamics equations for the Quanser 2 DoF Ball Balancer
     """
-    def __init__(self, dt):
+    def __init__(self, dt, simplified_dyn):
+        """
+        :param dt: simulation time step
+        :param simplified_dyn: flags if a dynamics model without Coriolis forces and without friction should be used
+        """
+        self.simplified_dyn = simplified_dyn
+
         # System variables
         self.dt = dt  # integration step size [s]
         self.g = 9.81  # gravity constant [m/s**2]
@@ -156,7 +171,7 @@ class BallBalancerDynamics:
         self.B_eq_v = (self.eta_g * self.K_g ** 2 * self.eta_m * self.k_m ** 2 + self.B_eq * self.R_m) / self.R_m
         self.zeta = self.m_ball * self.r_ball ** 2 + self.J_ball  # combined moment of inertial for the ball
 
-    def __call__(self, state, plate_angs, action, simplified_dyn=False):
+    def __call__(self, state, plate_angs, action):
         """
         Nonlinear Dynamics
         :param state: the state [servo_angpos_x, servo_angpos_y, ball_pos_x, ball_pos_y,
@@ -164,9 +179,15 @@ class BallBalancerDynamics:
         :param plate_angs: angular position of the plate (additional info)
                            Note: plate_angs is not necessary in case of simplified_dyn=True
         :param action: unbounded action (no clipping in this function)
-        :param simplified_dyn: flags if a dynamics model without Coriolis forces and without friction should be used
         :return: accelerations of the servo shaft angles and the ball positions
         """
+        # Apply a voltage dead zone (i.e., below a certain amplitude the system does not move)
+        # A very simple model of static friction. Experimentally evaluated the voltage required to get the plate moving.
+        if self.V_thold_x_neg <= action[0] <= self.V_thold_x_pos:
+            action[0] = 0
+        if self.V_thold_y_neg <= action[1] <= self.V_thold_y_pos:
+            action[1] = 0
+
         # State
         th_x = state[0]  # angle of the x axis servo (load)
         th_y = state[1]  # angle of the y axis servo (load)
@@ -193,7 +214,7 @@ class BallBalancerDynamics:
                 self.c_kin * (-th_y_ddot * np.cos(-th_y) - th_y_dot ** 2 * np.sin(-th_y)) + b_dot ** 2 * np.sin(b))
 
         # kinematics: sin(a) = c_kin * sin(th_x)
-        if simplified_dyn:
+        if self.simplified_dyn:
             # Ball dynamic without friction and Coriolis forces
             x_ddot = self.c_kin * self.m_ball * self.g * self.r_ball ** 2 * np.sin(th_x) / self.zeta  # symm inertia
             y_ddot = self.c_kin * self.m_ball * self.g * self.r_ball ** 2 * np.sin(th_y) / self.zeta  # symm inertia

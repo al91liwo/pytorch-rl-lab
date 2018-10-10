@@ -5,7 +5,14 @@ register(
     id='BallBalancerSim-v0',
     entry_point='quanser_robots.ball_balancer.ball_balancer_sim:BallBalancerSim',
     max_episode_steps=500,
-    kwargs={'fs': 100.0, 'fs_ctrl': 50.0}
+    kwargs={'fs': 100.0, 'fs_ctrl': 50.0, 'simplified_dyn': False}
+)
+
+register(
+    id='BallBalancerSimSimpleDyn-v0',
+    entry_point='quanser_robots.ball_balancer.ball_balancer_sim:BallBalancerSim',
+    max_episode_steps=500,
+    kwargs={'fs': 100.0, 'fs_ctrl': 50.0, 'simplified_dyn': True}
 )
 
 register(
