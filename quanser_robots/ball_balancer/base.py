@@ -2,7 +2,7 @@ import numpy as np
 import gym
 from gym.utils import seeding
 
-from ..common import VelocityFilter, LabeledBox
+from ..common import LabeledBox, Timing
 
 np.set_printoptions(precision=3, suppress=True)
 
@@ -237,14 +237,3 @@ class BallBalancerDynamics:
         accs = np.array([th_x_ddot, th_y_ddot, x_ddot, y_ddot])
         plate_angvel = np.array([a_dot, b_dot])
         return accs, plate_angvel
-
-
-class Timing:
-    def __init__(self, fs, fs_ctrl):
-        fs_ctrl_min = 50.0  # minimal control rate
-        assert fs_ctrl >= fs_ctrl_min, "control frequency must be at least {}".format(fs_ctrl_min)
-        self.n_sim_per_ctrl = int(fs / fs_ctrl)
-        assert fs == fs_ctrl * self.n_sim_per_ctrl, "sampling frequency must be a multiple of the control frequency"
-        self.dt = 1.0 / fs
-        self.dt_ctrl = 1.0 / fs_ctrl
-        self.render_rate = int(fs_ctrl)
