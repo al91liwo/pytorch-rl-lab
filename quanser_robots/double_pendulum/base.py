@@ -1,7 +1,7 @@
 import numpy as np
 import gym
 from gym.utils import seeding
-from quanser_robots.common import LabeledBox
+from quanser_robots.common import LabeledBox, Timing
 
 np.set_printoptions(precision=6, suppress=True)
 
@@ -112,19 +112,6 @@ class DoublePendulumBase(gym.Env):
 
     def render(self, mode='human'):
         raise NotImplementedError
-
-
-class Timing:
-    def __init__(self, fs, fs_ctrl):
-        fs_ctrl_min = 50.0  # minimal control rate
-        self.n_sim_per_ctrl = int(fs / fs_ctrl)
-
-        assert fs_ctrl >= fs_ctrl_min, "Control frequency must be at least {0}".format(fs_ctrl_min)
-        assert fs == fs_ctrl * self.n_sim_per_ctrl, "Sampling frequency must be a multiple of the control frequency"
-
-        self.dt = 1.0 / fs
-        self.dt_ctrl = 1.0 / fs_ctrl
-        self.render_rate = int(fs_ctrl)
 
 
 class ActionLimiter:
