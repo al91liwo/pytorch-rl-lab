@@ -9,16 +9,12 @@ from quanser_robots.qube import Parameterized
 env = Parameterized(GentlyTerminating(gym.make('Qube-v0')))
 
 # Show all adjustable physics parameters
-print(env.params)
+print(env.params())
 
 # Pass a dictionary of modified physics parameters upon environment reset
 env.reset({'g': 10.0})
-print(env.params)  # only the provided parameters are modified
+print(env.params())  # only the provided parameters are modified
 
 # Upon reset, previous parameters are used and not the default ones
 env.reset({'Rm': 9.0})
-print(env.params)
-
-# In-place parameter changes have no effect to avoid inconsistent dynamics init
-env.params['g'] = 20.0
-print(env.params)
+print(env.params())

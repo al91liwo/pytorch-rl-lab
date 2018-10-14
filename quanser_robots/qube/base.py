@@ -196,7 +196,6 @@ class Parameterized(gym.Wrapper):
     """
     Allow passing new dynamics parameters upon environment reset.
     """
-    @property
     def params(self):
         return self.unwrapped.dyn.params
 
