@@ -123,9 +123,9 @@ class Policy:
         return self._log_scale.sum() + self._ent_const
 
     def log_probs(self, obs: torch.Tensor, act: torch.Tensor):
-        log_probs = -0.5*((act-self._mu(obs))**2)*torch.exp(-2*self._log_scale)\
-                    -self._log_scale.sum() - self._log_prob_const
-        return log_probs.sum(dim=1, keepdim=True)
+        dist = 0.5 * ((act - self._mu(obs)) * torch.exp(-self._log_scale)) ** 2
+        neg_log_prob = (dist + self._log_scale).sum(dim=1, keepdim=True)
+        return - neg_log_prob - self._log_prob_const
 
     def _loss(self, log_probs, log_probs_old, adv):
         prob_ratio = torch.exp(log_probs - log_probs_old)
