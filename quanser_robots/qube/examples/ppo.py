@@ -100,7 +100,7 @@ class Policy:
         self._nb_epochs = nb_epochs
         self._batch_size = batch_size
         self._e_clip = e_clip
-        self._log_prob_const = 0.5 * a_dim * np.log(2 * np.pi)
+        self._log_prob_const = 0.5 * np.log(2 * np.pi)
         self._ent_const = 0.5 * a_dim + self._log_prob_const
         self._mu = Net((s_dim, *hl_size, a_dim))
         self._log_scale = torch.tensor(a_dim * [np.log(sig0)],
@@ -124,8 +124,8 @@ class Policy:
 
     def log_probs(self, obs: torch.Tensor, act: torch.Tensor):
         dist = 0.5 * ((act - self._mu(obs)) * torch.exp(-self._log_scale)) ** 2
-        neg_log_prob = (dist + self._log_scale).sum(dim=1, keepdim=True)
-        return - neg_log_prob - self._log_prob_const
+        neg_log_prob = (dist + self._log_scale + self._log_prob_const)
+        return - neg_log_prob.sum(dim=1, keepdim=True)
 
     def _loss(self, log_probs, log_probs_old, adv):
         prob_ratio = torch.exp(log_probs - log_probs_old)
