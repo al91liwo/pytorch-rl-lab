@@ -18,7 +18,7 @@ def batches(batch_size, data_size):
     """
     Helper function for doing SGD on mini-batches.
 
-    This function returns a generator with random sub-samples.
+    This function returns a generator returning random sub-samples.
 
     Example:
         If data_size = 5 and batch_size = 2, then the output might be
