@@ -1,3 +1,7 @@
+"""
+A PyTorch implementation of PPO that learns a swing-up controller.
+"""
+
 from itertools import islice
 import random
 import numpy as np

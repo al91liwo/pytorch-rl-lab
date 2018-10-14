@@ -6,7 +6,7 @@ from .base import QubeBase, QubeDynamics
 class Qube(QubeBase):
     def __init__(self, fs, fs_ctrl):
         super(Qube, self).__init__(fs, fs_ctrl)
-        self._dyn = QubeDynamics()
+        self.dyn = QubeDynamics()
         self._sim_state = None
         self._vis = {'vp': None, 'arm': None, 'pole': None, 'curve': None}
 
@@ -61,7 +61,7 @@ class Qube(QubeBase):
         # Add a bit of noise to action for robustness
         a_noisy = a + 1e-6 * np.float32(
             self._np_random.randn(self.action_space.shape[0]))
-        thdd, aldd = self._dyn(self._sim_state, a_noisy)
+        thdd, aldd = self.dyn(self._sim_state, a_noisy)
         # Update internal simulation state
         self._sim_state[3] += self.timing.dt * aldd
         self._sim_state[2] += self.timing.dt * thdd
@@ -86,10 +86,10 @@ class Qube(QubeBase):
             self._vis['pole'],\
             self._vis['curve'] = self._set_gui()
         th, al, _, _ = self._state
-        arm_pos = (self._dyn.Lr * np.cos(th), self._dyn.Lr * np.sin(th), 0.0)
-        pole_ax = (-self._dyn.Lp * np.sin(al) * np.sin(th),
-                   self._dyn.Lp * np.sin(al) * np.cos(th),
-                   -self._dyn.Lp * np.cos(al))
+        arm_pos = (self.dyn.Lr * np.cos(th), self.dyn.Lr * np.sin(th), 0.0)
+        pole_ax = (-self.dyn.Lp * np.sin(al) * np.sin(th),
+                   self.dyn.Lp * np.sin(al) * np.cos(th),
+                   -self.dyn.Lp * np.cos(al))
         self._vis['arm'].axis = self._vis['vp'].vector(*arm_pos)
         self._vis['pole'].pos = self._vis['vp'].vector(*arm_pos)
         self._vis['pole'].axis = self._vis['vp'].vector(*pole_ax)

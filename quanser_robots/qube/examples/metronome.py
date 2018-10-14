@@ -1,3 +1,7 @@
+"""
+An example of a custom controller implementation.
+"""
+
 import time
 import numpy as np
 import gym

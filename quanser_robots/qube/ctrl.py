@@ -96,7 +96,8 @@ class EnergyCtrl:
 
     def __call__(self, x):
         _, al, _, ald = x
-        Ek = 0.5 * self._dyn.Jp * ald ** 2
+        Jp = self._dyn.Mp * self._dyn.Lp ** 2 / 12
+        Ek = 0.5 * Jp * ald ** 2
         Ep = 0.5 * self._dyn.Mp * self._dyn.g * self._dyn.Lp * (1 - np.cos(al))
         E = Ek + Ep
         acc = np.clip(self.mu * (self.Er - E) * np.sign(ald * np.cos(al)),
