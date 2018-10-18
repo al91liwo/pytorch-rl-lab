@@ -250,22 +250,9 @@ if __name__ == '__main__':
                   f'p_loss = {p_loss:{5}.{4}} '
                   f'nb_paths = {paths["nb_paths"]}')
             print(paths['rwd'].sum().item() / paths['nb_paths'])
-            # if (i + 1) % 20 == 0:
-            #     render(env, lambda x: pol.mu(x))
+            if (i + 1) % 20 == 0:
+                render(env, lambda x: pol.mu(x))
 
         return paths
 
     pol_iter(100, 6000)
-
-    env._max_episode_steps = 1500
-
-    paths = pol_iter(1, 100 * 450)
-
-    x = paths['obs']
-    u = paths['act']
-    r = paths['rwd']
-    v = adv._v(paths['obs'])
-
-    data = np.concatenate((x.numpy(), u.numpy(), r[:, np.newaxis].numpy(), v.detach().numpy()), axis=-1)
-
-    np.save("ppo_furuta_dat", data)
