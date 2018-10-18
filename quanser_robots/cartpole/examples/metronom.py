@@ -1,17 +1,13 @@
-"""
-An example of a custom controller implementation.
-"""
-
 import time
 import numpy as np
 import gym
-import quanser_robots
+from quanser_robots import GentlyTerminating
 
 
-class MetronomeCtrl:
+class MetronomCtrl:
     """Rhythmically swinging metronome."""
 
-    def __init__(self, u_max=2.0, f=0.5, dur=5.0):
+    def __init__(self, u_max=10.0, f=0.5, dur=5.0):
         """
         Constructor
 
@@ -39,19 +35,32 @@ class MetronomeCtrl:
             self.done = True
             u = 0.0
         else:
-            u = 0.1 * self.u_max * np.sin(2 * np.pi * self.f * t)
+            u = 0.25 * self.u_max * np.sin(2 * np.pi * self.f * t)
         return [u]
 
 
 def main():
-    env = gym.make('Qube-v0')
+    env = GentlyTerminating(gym.make('CartpoleRR-v0'))
 
-    ctrl = MetronomeCtrl()
+    print("\n\nMetronom Example:")
+    ctrl = MetronomCtrl()
+
+    print("\tCalibrate the System:", end="")
     obs = env.reset()
+    print("\tDone")
+
+    print("\tSwing Pendulum:", end="")
     while not ctrl.done:
-        env.render()
+
+        # env.render()
         act = ctrl(obs)
         obs, _, _, _ = env.step(act)
+
+    print("\t\t\tDone")
+
+    print("\tReset the System:", end="")
+    obs = env.reset()
+    print("\t\tDone")
 
     env.close()
 

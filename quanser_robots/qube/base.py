@@ -1,7 +1,7 @@
 import numpy as np
 import gym
 from gym.utils import seeding
-from quanser_robots.common import LabeledBox
+from quanser_robots.common import LabeledBox, Timing
 
 np.set_printoptions(precision=6, suppress=True)
 
@@ -94,19 +94,6 @@ class QubeBase(gym.Env):
         raise NotImplementedError
 
 
-class Timing:
-    def __init__(self, fs, fs_ctrl):
-        fs_ctrl_min = 50.0  # minimal control rate
-        assert fs_ctrl >= fs_ctrl_min, \
-            "control frequency must be at least {}".format(fs_ctrl_min)
-        self.n_sim_per_ctrl = int(fs / fs_ctrl)
-        assert fs == fs_ctrl * self.n_sim_per_ctrl, \
-            "sampling frequency must be a multiple of the control frequency"
-        self.dt = 1.0 / fs
-        self.dt_ctrl = 1.0 / fs_ctrl
-        self.render_rate = int(fs_ctrl)
-
-
 class ActionLimiter:
     def __init__(self, state_space, action_space, th_lim_min):
         self._th_lim_min = th_lim_min
@@ -140,45 +127,62 @@ class QubeDynamics:
         self.g = 9.81
 
         # Motor
-        self.Rm = 8.4  # resistance
-        self.kt = 0.042  # current-torque (N-m/A)
+        self.Rm = 8.4    # resistance
         self.km = 0.042  # back-emf constant (V-s/rad)
 
         # Rotary arm
         self.Mr = 0.095  # mass (kg)
         self.Lr = 0.085  # length (m)
-        self.Jr = self.Mr * self.Lr ** 2 / 12  # inertia about COM (kg-m^2)
-        self.Dr = 5e-6  # viscous damping (N-m-s/rad), original: 0.0015
+        self.Dr = 5e-6   # viscous damping (N-m-s/rad), original: 0.0015
 
         # Pendulum link
         self.Mp = 0.024  # mass (kg)
         self.Lp = 0.129  # length (m)
-        self.Jp = self.Mp * self.Lp ** 2 / 12  # inertia about COM (kg-m^2)
-        self.Dp = 1e-6  # viscous damping (N-m-s/rad), original: 0.0005
+        self.Dp = 1e-6   # viscous damping (N-m-s/rad), original: 0.0005
+
+        # Init constants
+        self._init_const()
+
+    def _init_const(self):
+        # Moments of inertia
+        Jr = self.Mr * self.Lr ** 2 / 12  # inertia about COM (kg-m^2)
+        Jp = self.Mp * self.Lp ** 2 / 12  # inertia about COM (kg-m^2)
 
         # Constants for equations of motion
-        self._c1 = self.Jr + self.Mp * self.Lr ** 2
-        self._c2 = 0.25 * self.Mp * self.Lp ** 2
-        self._c3 = 0.5 * self.Mp * self.Lp * self.Lr
-        self._c4 = self.Jp + self._c2
-        self._c5 = 0.5 * self.Mp * self.Lp * self.g
+        self._c = np.zeros(5)
+        self._c[0] = Jr + self.Mp * self.Lr ** 2
+        self._c[1] = 0.25 * self.Mp * self.Lp ** 2
+        self._c[2] = 0.5 * self.Mp * self.Lp * self.Lr
+        self._c[3] = Jp + self._c[1]
+        self._c[4] = 0.5 * self.Mp * self.Lp * self.g
+
+    @property
+    def params(self):
+        params = self.__dict__.copy()
+        params.pop('_c')
+        return params
+
+    @params.setter
+    def params(self, params):
+        self.__dict__.update(params)
+        self._init_const()
 
     def __call__(self, s, u):
         th, al, thd, ald = s
         voltage = u[0]
 
         # Define mass matrix M = [[a, b], [b, c]]
-        a = self._c1 + self._c2 * np.sin(al) ** 2
-        b = self._c3 * np.cos(al)
-        c = self._c4
+        a = self._c[0] + self._c[1] * np.sin(al) ** 2
+        b = self._c[2] * np.cos(al)
+        c = self._c[3]
         d = a * c - b * b
 
         # Calculate vector [x, y] = tau - C(q, qd)
         trq = self.km * (voltage - self.km * thd) / self.Rm
-        c0 = self._c2 * np.sin(2 * al) * thd * ald \
-            - self._c3 * np.sin(al) * ald * ald
-        c1 = -0.5 * self._c2 * np.sin(2 * al) * thd * thd \
-            + self._c5 * np.sin(al)
+        c0 = self._c[1] * np.sin(2 * al) * thd * ald \
+            - self._c[2] * np.sin(al) * ald * ald
+        c1 = -0.5 * self._c[1] * np.sin(2 * al) * thd * thd \
+            + self._c[4] * np.sin(al)
         x = trq - self.Dr * thd - c0
         y = -self.Dp * ald - c1
 
@@ -187,3 +191,18 @@ class QubeDynamics:
         aldd = (a * y - b * x) / d
 
         return thdd, aldd
+
+
+class Parameterized(gym.Wrapper):
+    """
+    Allow passing new dynamics parameters upon environment reset.
+    """
+    def params(self):
+        return self.unwrapped.dyn.params
+
+    def step(self, action):
+        return self.env.step(action)
+
+    def reset(self, params):
+        self.unwrapped.dyn.params = params
+        return self.env.reset()

@@ -1,3 +1,7 @@
+"""
+A PyTorch implementation of PPO that learns a swing-up controller.
+"""
+
 from itertools import islice
 import random
 import numpy as np
@@ -14,7 +18,7 @@ def batches(batch_size, data_size):
     """
     Helper function for doing SGD on mini-batches.
 
-    This function returns a generator with random sub-samples.
+    This function returns a generator returning random sub-samples.
 
     Example:
         If data_size = 5 and batch_size = 2, then the output might be
@@ -97,7 +101,8 @@ class Policy:
         self._nb_epochs = nb_epochs
         self._batch_size = batch_size
         self._e_clip = e_clip
-        self._ent_const = a_dim * (0.5 + 0.5 * np.log(2 * np.pi))
+        self._log_prob_const = 0.5 * np.log(2 * np.pi)
+        self._ent_const = 0.5 * a_dim + self._log_prob_const
         self._mu = Net((s_dim, *hl_size, a_dim))
         self._log_scale = torch.tensor(a_dim * [np.log(sig0)],
                                        requires_grad=True,
@@ -119,11 +124,9 @@ class Policy:
         return self._log_scale.sum() + self._ent_const
 
     def log_probs(self, obs: torch.Tensor, act: torch.Tensor):
-        loc = self._mu(obs)
-        var = torch.exp(self._log_scale) ** 2
-        log_probs = -((act - loc) ** 2) / (2 * var) \
-                    - self._log_scale - np.log(np.sqrt(2 * np.pi))
-        return log_probs.sum(dim=1, keepdim=True)
+        dist = 0.5 * ((act - self._mu(obs)) * torch.exp(-self._log_scale)) ** 2
+        neg_log_prob = (dist + self._log_scale + self._log_prob_const)
+        return - neg_log_prob.sum(dim=1, keepdim=True)
 
     def _loss(self, log_probs, log_probs_old, adv):
         prob_ratio = torch.exp(log_probs - log_probs_old)

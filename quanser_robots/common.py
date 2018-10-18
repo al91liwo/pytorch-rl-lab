@@ -17,26 +17,22 @@ class QSocket:
         :param x_len: number of measured state variables to receive
         :param u_len: number of control variables to send
         """
-        self._x_fmt = '>' + (x_len + 1) * 'd'  # +1 is for the timestamp
+        self._x_fmt = '>' + x_len * 'd'
         self._u_fmt = '>' + u_len * 'd'
-        self._buf_size = (x_len + 1) * 8  # 8 bytes for each double
+        self._buf_size = x_len * 8  # 8 bytes for each double
         self._port = 9095  # fixed in Simulink model
         self._ip = ip
         self._soc = None
 
     def snd_rcv(self, u):
         """
-        Send u and receive (t, x).
+        Send u and receive x.
         :param u: control vector
-        :return: t, x: timestamp, vector of measured states
+        :return: x: vector of measured states
         """
-        # TODO: Check that sending np.float32 is not worse than np.float64
         self._soc.send(struct.pack(self._u_fmt, *u))
         data = self._soc.recv(self._buf_size)
-        q = struct.unpack(self._x_fmt, data)
-        t = q[0]
-        x = np.array(q[1:], dtype=np.float32)
-        return t, x
+        return np.array(struct.unpack(self._x_fmt, data), dtype=np.float32)
 
     def open(self):
         if self._soc is None:
@@ -125,3 +121,16 @@ class GentlyTerminating(gym.Wrapper):
 
     def reset(self):
         return self.env.reset()
+
+
+class Timing:
+    def __init__(self, fs, fs_ctrl):
+        fs_ctrl_min = 50.0  # minimal control rate
+        assert fs_ctrl >= fs_ctrl_min, \
+            "control frequency must be at least {}".format(fs_ctrl_min)
+        self.n_sim_per_ctrl = int(fs / fs_ctrl)
+        assert fs == fs_ctrl * self.n_sim_per_ctrl, \
+            "sampling frequency must be a multiple of the control frequency"
+        self.dt = 1.0 / fs
+        self.dt_ctrl = 1.0 / fs_ctrl
+        self.render_rate = int(fs_ctrl)

@@ -1,7 +1,12 @@
+"""
+The minimal program that shows the basic control loop on the simulated swing-up.
+"""
+
 import gym
+from quanser_robots import GentlyTerminating
 from quanser_robots.qube import SwingUpCtrl
 
-env = gym.make('Qube-v0')
+env = GentlyTerminating(gym.make('Qube-v0'))
 
 ctrl = SwingUpCtrl()
 obs = env.reset()

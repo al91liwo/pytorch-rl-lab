@@ -1,14 +1,10 @@
-"""
-An example of a custom controller implementation.
-"""
-
 import time
 import numpy as np
 import gym
 import quanser_robots
 
 
-class MetronomeCtrl:
+class MetronomCtrl:
     """Rhythmically swinging metronome."""
 
     def __init__(self, u_max=2.0, f=0.5, dur=5.0):
@@ -44,7 +40,7 @@ class MetronomeCtrl:
 
 
 def main():
-    env = gym.make('Qube-v0')
+    env = gym.make('DoublePendulumRR-v0')
 
     ctrl = MetronomeCtrl()
     obs = env.reset()

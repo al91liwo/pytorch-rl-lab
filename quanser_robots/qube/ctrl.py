@@ -70,7 +70,7 @@ class CalibrCtrl:
         self.go_center = PDCtrl()
 
     def __call__(self, x):
-        u = 0.0
+        u = [0.0]
         if not self.go_right.done:
             u = self.go_right(x)
         elif not self.go_left.done:
@@ -82,7 +82,7 @@ class CalibrCtrl:
             u = self.go_center(x)
         elif not self.done:
             self.done = True
-        return [u]
+        return u
 
 
 class EnergyCtrl:
@@ -96,7 +96,8 @@ class EnergyCtrl:
 
     def __call__(self, x):
         _, al, _, ald = x
-        Ek = 0.5 * self._dyn.Jp * ald ** 2
+        Jp = self._dyn.Mp * self._dyn.Lp ** 2 / 12
+        Ek = 0.5 * Jp * ald ** 2
         Ep = 0.5 * self._dyn.Mp * self._dyn.g * self._dyn.Lp * (1 - np.cos(al))
         E = Ek + Ep
         acc = np.clip(self.mu * (self.Er - E) * np.sign(ald * np.cos(al)),
@@ -109,7 +110,7 @@ class EnergyCtrl:
 class SwingUpCtrl:
     """Hybrid controller (EnergyCtrl, PDCtrl) switching based on alpha."""
 
-    def __init__(self, ref_energy=0.04, energy_gain=50.0, acc_max=5.0,
+    def __init__(self, ref_energy=0.04, energy_gain=50.0, acc_max=3.0,
                  alpha_max_pd_enable=10.0, pd_gain=None):
         # Set up the energy pumping controller
         self.en_ctrl = EnergyCtrl(ref_energy, energy_gain, acc_max)

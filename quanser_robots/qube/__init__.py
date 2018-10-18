@@ -1,5 +1,6 @@
 from gym.envs.registration import register
 from .ctrl import SwingUpCtrl
+from .base import Parameterized
 
 register(
     id='Qube-v0',

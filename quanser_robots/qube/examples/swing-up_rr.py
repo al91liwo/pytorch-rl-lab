@@ -1,3 +1,7 @@
+"""
+Analytic real-robot swing-up controller with trajectory visualization.
+"""
+
 import numpy as np
 import matplotlib.pyplot as plt
 import gym
