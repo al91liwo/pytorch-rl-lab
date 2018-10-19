@@ -17,6 +17,7 @@ def main():
         # env.render()
         act = ctrl(obs)
         obs, _, _, _ = env.step(act)
+        # print(obs)
     env.close()
 
 

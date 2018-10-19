@@ -10,9 +10,12 @@ class PICtrl:
     Flag `done` is set when `|x_des - x| < tol`.
     """
 
-    def __init__(self, K=None, ic_des=0.0, tol=5e-2):
+    def __init__(self, K=None, bsp=0.0, dt=0.002, ic_des=0.0, tol=5e-2):
         self.done = False
-        self.K = K if K is not None else [1.0, 0.1]
+        self.K = K if K is not None else [230, 50430]
+        self.bsp = bsp
+        self.dt = dt
+
         self.ic_des = ic_des
         self.tol = tol
 
@@ -26,6 +29,9 @@ class PICtrl:
         if not self.done and err < tol:
             self.done = True
 
-        self.mem += (ic_des - ic)
+        self.mem += (ic_des - ic) * self.dt
 
-        return [K[0]*(ic_des - ic) + K[1]*self.mem]
+        p_ctl = K[0] * (self.bsp * ic_des - ic)
+        i_ctl = K[1] * self.mem
+
+        return [p_ctl + i_ctl]

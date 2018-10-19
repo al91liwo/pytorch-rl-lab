@@ -15,9 +15,9 @@ class LevitationBase(gym.Env):
 
         # Limits
         act_max = np.array([25.0])
-        state_min, state_max = np.array([0.0, -5.0]), np.array([3.0, 5.0])
-        sens_min, sens_max = np.array([0.0, -5.0]), np.array([3.0, 5.0])
-        obs_min, obs_max = np.array([0.0, -5.0]), np.array([3.0, 5.0])
+        state_min, state_max = np.array([0.0, -10.0]), np.array([3.0, 10.0])
+        sens_min, sens_max = np.array([0.0, -10.0]), np.array([3.0, 10.0])
+        obs_min, obs_max = np.array([0.0, -10.0]), np.array([3.0, 10.0])
 
         # Spaces
         self.state_space = LabeledBox(
@@ -34,7 +34,7 @@ class LevitationBase(gym.Env):
             low=-act_max, high=act_max, dtype=np.float32)
         self.reward_range = (0.0, self.timing.dt_ctrl)
 
-        self.goal = np.array([1.5])
+        self.goal = np.array([1.0])
 
         # Initialize random number generator
         self._np_random = None
@@ -110,15 +110,11 @@ class LevitationDynamics:
         self.KB = self.Tb / 5.0    # sensor sensitivity
 
         # I/V Tf
-        self.Tc = self.Lc / (self.Rc + self.Rs)
-        self.Kp = self.Rc + self.Rs
+        self.Tc = self.Lc
+        self.T0 = self.Rs + self.Rc
+        self.Kc = 1.0
 
     def __call__(self, s, u):
-        ic, ic_des = s
-        v = u
-
-        A = - 1.0 / self.Tc
-        B = self.Kp / self.Tc
-
-        dic = A * ic + B * v[0]
-        return dic
+        a = - self.T0 / self.Tc
+        b = 1.0 / self.Tc
+        return a * s[0] + b * u[0]
