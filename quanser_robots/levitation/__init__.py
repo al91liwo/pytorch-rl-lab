@@ -8,6 +8,14 @@ register(
 )
 
 register(
+    id='Coil-v0',
+    entry_point='quanser_robots.levitation.levitation:Coil',
+    max_episode_steps=5000,
+    kwargs={'fs': 500.0, 'fs_ctrl': 500.0}
+)
+
+
+register(
     id='LevitationRR-v0',
     entry_point='quanser_robots.levitation.levitation_rr:Levitation',
     max_episode_steps=500,

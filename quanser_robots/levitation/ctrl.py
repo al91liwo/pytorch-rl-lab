@@ -1,37 +1,75 @@
 import numpy as np
 
 
-class PICtrl:
+class CurrentPICtrl:
     """
-    PI controller
+    PI coil current controller with Anti-Windup
 
-    Accepts `ic_des` and drives Qube to `x_des = (ic_des, 0.0)`
-
-    Flag `done` is set when `|x_des - x| < tol`.
+    Accepts `ic_des` and drives current to `x_des = (ic_des, 0.0)`
     """
 
-    def __init__(self, K=None, bsp=0.0, dt=0.002, ic_des=0.0, tol=5e-2):
-        self.done = False
+    def __init__(self, K=None, bsp=0.0, dt=0.002, sat=25.0):
         self.K = K if K is not None else [230, 50430]
         self.bsp = bsp
         self.dt = dt
-
-        self.ic_des = ic_des
-        self.tol = tol
+        self.sat = sat
 
         self.mem = 0.0
+        self.awp = 0.0
 
-    def __call__(self, x):
-        ic, dic = x
-        K, ic_des, tol = self.K, self.ic_des, self.tol
+    def __call__(self, s, sref):
+        ic, icd = s
+        ic_ref = sref
+        K = self.K
 
-        err = np.sqrt((ic_des - ic) ** 2 + dic**2)
-        if not self.done and err < tol:
-            self.done = True
+        prop_err = (self.bsp * ic_ref - ic)
+        prop_ctl = K[0] * prop_err
 
-        self.mem += (ic_des - ic) * self.dt
+        int_err = (ic_ref - ic) + 1.0 / K[0] * self.awp
+        self.mem += int_err * self.dt
+        int_ctl = K[1] * self.mem
 
-        p_ctl = K[0] * (self.bsp * ic_des - ic)
-        i_ctl = K[1] * self.mem
+        act = prop_ctl + int_ctl
+        act_sat = np.clip(act, -self.sat, self.sat)
+        self.awp = act_sat - act
 
-        return [p_ctl + i_ctl]
+        return np.array([act_sat])
+
+class GapPIVCtrl:
+    """
+    PIV gap controller with Anti-Windup
+
+    Accepts `xb_des` and drives Ball to `x_des = (xb_des, 0.0)`
+    """
+
+    def __init__(self, K=None, bsp=0.0, dt=0.002, sat=3.0):
+        self.K = K if K is not None else [230, 50430, 1.0, 1.0]
+        self.bsp = bsp
+        self.dt = dt
+        self.sat = sat
+
+        self.mem = 0.0
+        self.awp = 0.0
+
+        self.done = False
+
+    def __call__(self, s, sref):
+        xb, xbd = s
+        xb_ref = sref
+        K = self.K
+
+        prop_err = (self.bsp * xb_ref - xb)
+        prop_ctl = K[0] * prop_err
+
+        int_err = (xb_ref - xb) + 1.0 / K[0] * self.awp
+        self.mem += int_err * self.dt
+        int_ctl = K[1] * self.mem
+
+        ff_ctl =  xb_ref * self.K[2]
+        vel_ctl = xbd * self.K[3]
+
+        act = prop_ctl + int_ctl - vel_ctl
+        act_sat = np.clip(act, -self.sat, self.sat)
+        self.awp = act_sat - act
+
+        return act_sat
