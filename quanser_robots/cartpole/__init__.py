@@ -2,9 +2,9 @@ from gym.envs.registration import register
 
 register(
     id='Cartpole-v0',
-    entry_point='quanser_robots.qube.qube:Qube',
+    entry_point='quanser_robots.cartpole.cartpole:Cartpole',
     max_episode_steps=500,
-    kwargs={'fs': 100.0, 'fs_ctrl': 50.0}
+    kwargs={'fs': 500.0, 'fs_ctrl': 500.0}
 )
 
 register(
@@ -13,3 +13,4 @@ register(
     max_episode_steps=500,
     kwargs={'ip': '130.83.164.56', 'fs_ctrl': 50.0}
 )
+
