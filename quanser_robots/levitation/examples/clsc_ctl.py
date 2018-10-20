@@ -13,6 +13,7 @@ from scipy import signal
 
 import matplotlib.pyplot as plt
 
+
 def currentCtl(ref):
     env = gym.make('Coil-v0')
 
@@ -31,7 +32,7 @@ def currentCtl(ref):
     return state
 
 
-def gapCtl(verbose=False):
+def gapCtl():
     env = gym.make('Levitation-v0')
 
     obs = env.reset()
@@ -42,13 +43,17 @@ def gapCtl(verbose=False):
 if __name__ == "__main__":
 
     # Coil current control
-    t = np.linspace(0, 1, 500, endpoint=False)
-    ref = np.clip(2 * signal.square(2 * np.pi * t), 0.0, 3.0)
+    t = np.linspace(0, 1, 10000, endpoint=False)
+    ref = np.clip(2.0 * signal.square(2 * np.pi * 5 * t), 0.0, 3.0)
 
     state = currentCtl(ref)
 
     plt.plot(state[:, 0])
     plt.plot(ref)
+    plt.title('Coil Current Control')
+    plt.xlabel('Step')
+    plt.ylabel('Current')
+    plt.legend(['Current', 'Reference'])
 
     # # Levitaiton simulation
     # gapCtl(verbose=True)

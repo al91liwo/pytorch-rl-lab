@@ -8,7 +8,7 @@ class CurrentPICtrl:
     Accepts `ic_des` and drives current to `x_des = (ic_des, 0.0)`
     """
 
-    def __init__(self, K=None, bsp=0.0, dt=0.002, sat=25.0):
+    def __init__(self, K=None, bsp=0.25, dt=0.002, sat=25.0):
         self.K = K if K is not None else [230, 50430]
         self.bsp = bsp
         self.dt = dt

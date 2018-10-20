@@ -30,7 +30,8 @@ class Coil(CoilBase):
 
     def reset(self):
         self._calibrate()
-        return self.step(np.array([0.0]))[0]
+        obs, _, _, _ = self.step(np.array([0.0]))
+        return obs
 
 
 class Levitation(LevitationBase):
@@ -71,5 +72,6 @@ class Levitation(LevitationBase):
 
     def reset(self):
         self._calibrate()
-        return self.step(np.array([0.0]))[0]
+        obs, _, _, _ = self.step(np.array([0.0]))
+        return obs
 
