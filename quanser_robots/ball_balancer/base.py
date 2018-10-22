@@ -32,8 +32,9 @@ class BallBalancerBase(gym.Env):
         self._state = None
         self._vel_filt = None  # init in subclasses
         self._plate_angs = None  # auxiliary information about the plate's angular position
+        self._dyn = None  # only necessary for BallBalancerSim, but might be beneficial for BallBalancerRR
         self.done = None
-        self._step_count = None
+        self._step_count = 0
         self._curr_action = None  # only for plotting
         self.timing = Timing(fs, fs_ctrl)
 
@@ -65,6 +66,11 @@ class BallBalancerBase(gym.Env):
         # Initialize random number generator
         self._np_random = None
         # self.seed()
+
+        # Init storage for rendering
+        self._anim_canvas = None
+        self._anim_ball = None
+        self._anim_plate = None
 
     def seed(self, seed=None):
         self._np_random, seed = seeding.np_random(seed)
@@ -117,15 +123,74 @@ class BallBalancerBase(gym.Env):
         else:
             return False
 
-    def render(self, mode='human'):
-        """
-        Cheap print to console
-        """
-        reward_using_state = self._rew_fcn(self._state, self._curr_action) if self._step_count > 0 else np.NaN
-        if mode == 'human':
-            print("step: {:3}  |  in bounds: {:1}  |  state: {}  |  plate: {} [deg]  |  action: {}  | reward: {:.3f}".format(
-                self._step_count, self.state_space.contains(self._state), self._state, self._plate_angs *180./np.pi,
-                self._curr_action, reward_using_state))
+    def render(self, mode, render_step=10):
+        assert isinstance(self._dyn, BallBalancerDynamics), "Missing dynamics properties for simulation!"
+        
+        # Cheap printing to console
+        if self._step_count % render_step == 0:
+            print("time step: {:3}  |  in bounds: {:1}  |  state: {}  |  action: {}".format(
+                self._step_count, self.state_space.contains(self._state), self._state, self._curr_action))
+
+            if not self.state_space.contains(self._state):
+                # State is out of bounds
+                np.set_printoptions(precision=3)
+                print("min state : ", self.state_space.low)
+                print("last state: ", self._state)
+                print("max state : ", self.state_space.high)
+
+        # Render using vpython
+        import vpython as vp
+        vp.rate(30)
+        d_plate = 0.01  # only for animation
+
+        # Init render objects on first call
+        if self._anim_canvas is None:
+            self._anim_canvas = vp.canvas(width=800, height=600, title="Quanser Ball Balancer")
+            self._anim_ball = vp.sphere(
+                pos=vp.vector(self._state[2], self._state[3], self._dyn.r_ball),
+                radius=self._dyn.r_ball,
+                mass=self._dyn.m_ball,
+                color=vp.color.red,
+                canvas=self._anim_canvas,
+            )
+            self._anim_plate = vp.box(
+                pos=vp.vector(0, 0, 0),
+                size=vp.vector(self._dyn.l_plate, self._dyn.l_plate, d_plate),
+                color=vp.color.green,
+                canvas=self._anim_canvas,
+            )
+        #  Compute plate orientation
+        a = self._plate_angs[0]  # plate's angle around the y axis (alpha)
+        b = self._plate_angs[1]  # plate's angle around the x axis (beta)
+
+        # Axis runs along the x direction
+        self._anim_plate.axis = vp.vec(
+            vp.cos(a),
+            0,
+            vp.sin(a),
+        ) * self._dyn.l_plate
+        # Up runs along the y direction (vpython coordinate system is weird)
+        self._anim_plate.up = vp.vec(
+            0,
+            vp.cos(b),
+            vp.sin(b),
+        )
+
+        # Compute ball position
+        x = self._state[2]  # ball position along the x axis
+        y = self._state[3]  # ball position along the y axis
+
+        self._anim_ball.pos = vp.vec(
+            x * vp.cos(b),
+            y * vp.cos(a),
+            self._dyn.r_ball + x * vp.sin(b) + y * vp.sin(a) + vp.cos(a) * d_plate / 2.,
+        )
+
+        # Set caption text
+        self._anim_canvas.caption = f"""
+            Plate angles: {b * 180/np.pi :2.2f}, {a * 180/np.pi :2.2f}
+            Ball position: {x :1.3f}, {y :1.3f}
+            """
 
     def close(self):
         raise NotImplementedError
@@ -237,3 +302,110 @@ class BallBalancerDynamics:
         accs = np.array([th_x_ddot, th_y_ddot, x_ddot, y_ddot])
         plate_angvel = np.array([a_dot, b_dot])
         return accs, plate_angvel
+
+
+class BallBalancerKinematics:
+    """
+    Calculates and visualizes the kinematics from the servo shaft angles (th_x, th_x) to the plate angles (a, b).
+    """
+
+    def __init__(self, qbb):
+        """
+        :param qbb: QBallBalancerEnv object
+        """
+        self.qbb = qbb
+
+        self.r = self.qbb.domain_param['r_arm']
+        self.l = self.qbb.domain_param['l_plate'] / 2.
+        self.d = 0.10  # roughly measured
+
+        # Visualization
+        self.fig, self.ax = plt.subplots(figsize=(5, 5))
+        self.ax.set_xlim(-0.5 * self.r, 1.2 * (self.r + self.l))
+        self.ax.set_ylim(-1.0 * self.d, 2 * self.d)
+        self.ax.set_aspect('equal')
+        self.line1, = self.ax.plot([0, 0], [0, 0], marker='o')
+        self.line2, = self.ax.plot([0, 0], [0, 0], marker='o')
+        self.line3, = self.ax.plot([0, 0], [0, 0], marker='o')
+
+    def __call__(self, th):
+        """
+
+        :param th: x or y
+        :return: plate angle al pha or beta
+        """
+        import torch as to
+
+        if not isinstance(th, to.Tensor):
+            th = to.tensor(th, dtype=to.float32)
+
+        # Update the lengths, e.g. if the domain has been randomized
+        self.r = self.qbb.domain_param['r_arm']
+        self.l = self.qbb.domain_param['l_plate'] / 2.
+        self.d = 0.10  # roughly measured
+
+        tip = self.rod_tip(th)
+        ang = self.plate_ang(tip)
+        self.render(th, tip)
+        return ang
+
+    def rod_tip(self, th):
+        """
+        Get Cartesian coordinates of the rod tip for one servo.
+        :param th: current value of the respective servo shaft angle
+        :return tip: 2D position of the rod tip in the sagittal plane
+        """
+        import torch as to
+        # Initial guess for the rod tip
+        tip_init = [self.r, self.l]  # [x, y] in the sagittal plane
+        tip = to.tensor(tip_init, requires_grad=True)
+
+        optimizer = to.optim.SGD([tip], lr=0.01, momentum=0.9)
+
+        for i in range(200):
+            optimizer.zero_grad()
+            loss = self._loss_fcn(tip, th)
+            loss.backward()
+            optimizer.step()
+
+        return tip
+
+    def _loss_fcn(self, tip, th):
+        """
+        Cost function for the optimization problem, which only consists of 2 constraints that should be fulfilled.
+        :param tip:
+        :param th:
+        :return: the cost value
+        """
+        import torch as to
+
+        # Formulate the constrained optimization problem as an unconstrained using the known segment lengths
+        rod_len = to.sqrt((tip[0] - self.r * to.cos(th)) ** 2 + (tip[1] - self.r * to.sin(th)) ** 2)
+        half_palte = to.sqrt((tip[0] - self.r - self.l) ** 2 + (tip[1] - self.d) ** 2)
+
+        return (rod_len - self.d) ** 2 + (half_palte - self.l) ** 2
+
+    def plate_ang(self, tip):
+        """
+        Compute plate angle (alpha or beta) from the rod tip position which has been calculated from servo shaft angle
+        (th_x or th_y) before.
+        :return tip: 2D position of the rod tip in the sagittal plane (from the optimizer)
+        """
+        import torch as to
+        ang = np.pi / 2. - to.atan2(self.r + self.l - tip[0], tip[1] - self.d)
+        return float(ang)
+
+    def render(self, th, tip):
+        """
+        Visualize using pyplot
+        :param th:
+        :param tip:
+        """
+        A = [0, 0]
+        B = [self.r * np.cos(th), self.r * np.sin(th)]
+        C = [tip[0], tip[1]]
+        D = [self.r + self.l, self.d]
+
+        self.line1.set_data([A[0], B[0]], [A[1], B[1]])
+        self.line2.set_data([B[0], C[0]], [B[1], C[1]])
+        self.line3.set_data([C[0], D[0]], [C[1], D[1]])
