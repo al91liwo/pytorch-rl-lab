@@ -73,27 +73,29 @@ def gapCtl(ref):
 
 if __name__ == "__main__":
 
-    # # coil current control
-    # T, f = 10, 500
-    # t = np.linspace(0, T, f * T, endpoint=False)
-    #
-    # ref = np.clip(signal.square(2 * np.pi * 0.2 * t - np.pi), 0.0, 1.0)
-    # plt.plot(t, ref)
-    # plt.xticks(np.arange(min(t), max(t) + 1, 1.0))
-    # plt.xlabel('Time')
-    # plt.title('Coil Current Control')
-    #
-    # state, action = currentCtl(ref)
-    # plt.plot(t, state[:, 0])
-    # plt.ylabel('Current')
-    # plt.legend(['Reference', 'Current'])
-    #
-    # plt.figure()
-    # plt.plot(t, action)
-    # plt.xticks(np.arange(min(t), max(t) + 1, 1.0))
-    # plt.ylabel('Voltage')
-    # plt.xlabel('Time')
-    # plt.title('Coil Current Control')
+    # coil current control
+    T, f = 10, 500
+    t = np.linspace(0, T, f * T, endpoint=False)
+
+    ref = np.clip(signal.square(2 * np.pi * 0.2 * t - np.pi), 0.0, 1.0)
+    plt.figure()
+    plt.subplot(211)
+    plt.plot(t, ref)
+    plt.xticks(np.arange(min(t), max(t) + 1, 1.0))
+    plt.xlabel('Time')
+    plt.title('Coil Current Control')
+
+    state, action = currentCtl(ref)
+    plt.plot(t, state[:, 0])
+    plt.ylabel('Current')
+    plt.legend(['Reference', 'Current'])
+
+    plt.subplot(212)
+    plt.plot(t, action)
+    plt.xticks(np.arange(min(t), max(t) + 1, 1.0))
+    plt.ylabel('Voltage')
+    plt.xlabel('Time')
+    plt.title('Coil Current Control')
 
     # levitaiton simulation
     T, f = 10, 500
@@ -103,6 +105,8 @@ if __name__ == "__main__":
     ref = 0.014 + 1e-3 * signal.square(2 * np.pi * 0.25 * t - np.pi)
     ref[500 * 2: ] += 1.0 * (-0.006 + 1e-3)
     ref = ratelimit(ref, t, 0.005)
+    plt.figure()
+    plt.subplot(211)
     plt.plot(t, ref)
     plt.xticks(np.arange(min(t), max(t) + 1, 1.0))
     plt.xlabel('Time')
@@ -114,7 +118,7 @@ if __name__ == "__main__":
     plt.ylabel('Gap')
     plt.legend(['Reference', 'Gap'])
 
-    plt.figure()
+    plt.subplot(212)
     plt.plot(t, action)
     plt.xticks(np.arange(min(t), max(t) + 1, 1.0))
     plt.ylabel('Current')
