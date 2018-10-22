@@ -14,10 +14,10 @@ class CoilBase(gym.Env):
         self.timing = Timing(fs, fs_ctrl)
 
         # Limits
-        act_max = np.array([25.0])
-        state_min, state_max = np.array([0.0, -10.0]), np.array([3.0, 10.0])
-        sens_min, sens_max = np.array([0.0, -10.0]), np.array([3.0, 10.0])
-        obs_min, obs_max = np.array([0.0, -10.0]), np.array([3.0, 10.0])
+        act_max = np.array([24.0])
+        state_min, state_max = np.array([0.0, -1e3]), np.array([3.0, 1e3])
+        sens_min, sens_max = np.array([0.0, -1e3]), np.array([3.0, 1e3])
+        obs_min, obs_max = np.array([0.0, -1e3]), np.array([3.0, 1e3])
 
         # Spaces
         self.state_space = LabeledBox(
@@ -129,9 +129,9 @@ class LevitationBase(gym.Env):
 
         # Limits
         act_max = np.array([3.0])
-        state_min, state_max = np.array([0.0, -5e-3]), np.array([0.014, 5e-3])
-        sens_min, sens_max = np.array([0.0, -5e-3]), np.array([0.014, 5e-3])
-        obs_min, obs_max = np.array([0.0, -5e-3]), np.array([0.014, 5e-3])
+        state_min, state_max = np.array([0.0, -np.inf]), np.array([0.014, np.inf])
+        sens_min, sens_max = np.array([0.0, -np.inf]), np.array([0.014, np.inf])
+        obs_min, obs_max = np.array([0.0, -np.inf]), np.array([0.014, np.inf])
 
         # Spaces
         self.state_space = LabeledBox(
@@ -148,7 +148,7 @@ class LevitationBase(gym.Env):
             low=-act_max, high=act_max, dtype=np.float32)
         self.reward_range = (0.0, self.timing.dt_ctrl)
 
-        self.xb0 = np.array([0.01]) # operating point
+        self.xb0 = np.array([0.014]) # operating point
         self.xbg = np.array([0.008]) # goal gap
 
         # Initialize random number generator
