@@ -82,7 +82,7 @@ class GapPIVCtrl:
         ff_ctl =  xb_ref * self.K[2]
         vel_ctl = xbd * self.K[3]
 
-        act = prop_ctl + int_ctl + ff_ctl - vel_ctl
+        act = prop_ctl + int_ctl + 0.8 * ff_ctl - vel_ctl
         act_sat = np.clip(act, 0.0, self.act_sat)
 
         return np.array([act_sat])

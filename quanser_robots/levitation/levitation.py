@@ -25,11 +25,7 @@ class Coil(CoilBase):
         vel = self._sim_state[1]
         return np.concatenate([np.array([pos]), np.array([vel])])
 
-        # vel = self._vel_filt(np.array([pos]))
-        # return np.concatenate([np.array([pos]), vel])
-
     def reset(self):
-        self._vel_filt = VelocityFilter(self.state_space.shape[0] - 1, dt=self.timing.dt)
         self._state = np.zeros(self.state_space.shape)
         return self.observe()
 
@@ -47,14 +43,14 @@ class Levitation(LevitationBase):
     def _sim_step(self, s, a):
         self._sim_state = np.copy(s)
 
+        # apply current to levitation
+        xbdd = self.dyn(self._sim_state, self.coil._state)
+
         # apply reference to PI
         vc = self.pictl(self.coil._state, a)
 
         # apply PI action to coil
         self.coil.step(vc)
-
-        # apply current to levitation
-        xbdd = self.dyn(self._sim_state, self.coil._state)
 
         # Update internal simulation state
         self._sim_state[1] += self.timing.dt * xbdd
@@ -66,10 +62,13 @@ class Levitation(LevitationBase):
         vel = self._sim_state[1]
         return np.concatenate([np.array([pos]), np.array([vel])])
 
-        # vel = self._vel_filt(np.array([pos]))
-        # return np.concatenate([np.array([pos]), vel])
+        # vel = self._vel_filt(np.array(pos))
+        # return np.array([pos, vel[-1]])
 
     def reset(self):
-        self._vel_filt = VelocityFilter(self.state_space.shape[0] - 1, dt=self.timing.dt)
+        self._vel_filt = VelocityFilter(self.state_space.shape[0] - 1,
+                                        num=(2.2207e5, 0), den=(1.0, 848.23, 2.2207e5),
+                                        dt=self.timing.dt)
+
         self._state = np.hstack((self.xb0, 0.0))
         return self.observe()
