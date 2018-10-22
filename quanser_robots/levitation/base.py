@@ -40,11 +40,7 @@ class CoilBase(gym.Env):
         self._np_random = None
         self.seed()
 
-    def _zero_sim_step(self):
-        # TODO: Make sure sending float64 is OK with real robot interface
-        return self._sim_step(np.array([0.0]))
-
-    def _sim_step(self, a):
+    def _sim_step(self, s, a):
         """
         Update internal state of simulation and return an estimate thereof.
 
@@ -58,7 +54,8 @@ class CoilBase(gym.Env):
         a_cmd = None
         for _ in range(self.timing.n_sim_per_ctrl):
             a_cmd = np.clip(a, self.action_space.low, self.action_space.high)
-            s = self._sim_step(a_cmd)
+            s = self._sim_step(s, a_cmd)
+            s = np.clip(s, self.state_space.low, self.state_space.high)
         return s, a_cmd  # return the last applied (clipped) command
 
     def _rwd(self, s, a):
@@ -73,7 +70,6 @@ class CoilBase(gym.Env):
     def step(self, a):
         rwd, done = self._rwd(self._state, a)
         self._state, act = self._ctrl_step(a)
-        self._state = np.clip(self._state, self.state_space.low, self.state_space.high)
         obs = self.observe()
         return obs, rwd, done, {'s': self._state, 'a': act}
 
@@ -155,11 +151,7 @@ class LevitationBase(gym.Env):
         self._np_random = None
         self.seed()
 
-    def _zero_sim_step(self):
-        # TODO: Make sure sending float64 is OK with real robot interface
-        return self._sim_step(np.array([0.0]))
-
-    def _sim_step(self, a):
+    def _sim_step(self, s, a):
         """
         Update internal state of simulation and return an estimate thereof.
 
@@ -173,7 +165,8 @@ class LevitationBase(gym.Env):
         a_cmd = None
         for _ in range(self.timing.n_sim_per_ctrl):
             a_cmd = np.clip(a, self.action_space.low, self.action_space.high)
-            s = self._sim_step(a_cmd)
+            s = self._sim_step(s, a_cmd)
+            s = np.clip(s, self.state_space.low, self.state_space.high)
         return s, a_cmd  # return the last applied (clipped) command
 
     def _rwd(self, s, a):
@@ -188,7 +181,6 @@ class LevitationBase(gym.Env):
     def step(self, a):
         rwd, done = self._rwd(self._state, a)
         self._state, act = self._ctrl_step(a)
-        self._state = np.clip(self._state, self.state_space.low, self.state_space.high)
         obs = self.observe()
         return obs, rwd, done, {'s': self._state, 'a': act}
 

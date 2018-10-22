@@ -33,7 +33,7 @@ def currentCtl(ref):
     state = np.zeros((len(ref), 2))
     action = np.zeros((len(ref), 1))
 
-    ctrl = CurrentPICtrl()
+    ctrl = CurrentPICtrl(wind=True)
     obs = env.reset()
 
     for i in range(len(ref)):
