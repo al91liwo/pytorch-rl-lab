@@ -55,10 +55,9 @@ def rollouts(env, policy, nb_trans):
             for key, val in zip(keys, trans_vect):
                 paths[key].append(val)
         nb_paths += 1
-
-    paths['obs'] = torch.from_numpy(np.stack(paths['obs'])).float()
-    paths['act'] = torch.from_numpy(np.stack(paths['act'])).float()
-    paths['rwd'] = torch.from_numpy(np.stack(paths['rwd'])).float()
+    paths['obs'] = torch.from_numpy(np.stack(paths['obs']))
+    paths['act'] = torch.from_numpy(np.stack(paths['act']))
+    paths['rwd'] = torch.from_numpy(np.stack(paths['rwd']))
     paths['done'] = np.stack(paths['done'])
     paths['nb_paths'] = nb_paths
     return paths
@@ -189,49 +188,43 @@ class Advantage:
         return adv, loss
 
 
-if __name__ == '__main__':
+def main():
     import time
     import gym
-
     from quanser_robots import GentlyTerminating
     import matplotlib.pyplot as plt
     from matplotlib.animation import FuncAnimation
     plt.style.use('seaborn')
 
-    torch.set_num_threads(1)
-
     seed = 2739011
     nb_iter = 100
-    nb_trans = 6000
+    nb_trans = 3000
     pol_params = dict(
         sig0=5.0,
-        hl_size=(16, 16),
+        hl_size=(64, 64),
         e_clip=0.1,
         lr=1e-3,
-        nb_epochs=25,
+        nb_epochs=10,
         batch_size=64
     )
     adv_params = dict(
-        hl_size=(16, 16),
+        hl_size=(64, 64),
         gam=0.99,
         lam=0.95,
         lr=1e-3,
-        nb_epochs=25,
+        nb_epochs=10,
         batch_size=64
     )
 
     set_global_seed(seed)
-    env = gym.make('Qube-v0')
-    env._max_episode_steps = 1500
-    env = GentlyTerminating(env)
-
+    env = GentlyTerminating(gym.make('Qube-v0'))
     pol = Policy(env.observation_space.shape[0],
                  env.action_space.shape[0],
                  **pol_params)
     adv = Advantage(env.observation_space.shape[0], **adv_params)
     env.seed(seed)
 
-    def pol_iter(nb_iter, nb_trans):
+    def pol_iter():
         for i in range(nb_iter):
             t_start = time.perf_counter()
             paths = rollouts(env, pol, nb_trans)
@@ -240,7 +233,7 @@ if __name__ == '__main__':
             t_A_fit = time.perf_counter()
             p_loss = pol.fit(paths, A)
             t_pol_fit = time.perf_counter()
-            # yield paths
+            yield paths
             t_end = time.perf_counter()
             print(f'{i}: dt = {t_end - t_start:{5}.{4}} '
                   f'roll = {t_roll - t_start:{5}.{4}} '
@@ -249,23 +242,51 @@ if __name__ == '__main__':
             print(f'    v_loss = {v_loss:{5}.{4}} '
                   f'p_loss = {p_loss:{5}.{4}} '
                   f'nb_paths = {paths["nb_paths"]}')
-            print(paths['rwd'].sum().item() / paths['nb_paths'])
-            # if (i + 1) % 20 == 0:
-            #     render(env, lambda x: pol.mu(x))
+            if (i + 1) % 20 == 0:
+                render(env, lambda x: pol.mu(x))
 
-        return paths
+    fig, axes = plt.subplots(2, 1, figsize=(4, 3))
+    ret_ax, ent_ax = axes
+    iter_numbers = []
 
-    pol_iter(100, 6000)
+    ret = []
+    ret_ax.set_xlabel('Iteration number')
+    ret_ax.set_ylabel('Average return')
+    ret_ln, = ret_ax.plot([], [])
 
-    env._max_episode_steps = 1500
+    ent = []
+    ent_ax.set_xlabel('Iteration number')
+    ent_ax.set_ylabel('Policy entropy')
+    ent_ln, = ent_ax.plot([], [])
 
-    paths = pol_iter(1, 100 * 450)
+    fig.tight_layout()
 
-    x = paths['obs']
-    u = paths['act']
-    r = paths['rwd']
-    v = adv._v(paths['obs'])
+    def update(frame):
+        paths = frame
+        iter_numbers.append(len(iter_numbers))
 
-    data = np.concatenate((x.numpy(), u.numpy(), r[:, np.newaxis].numpy(), v.detach().numpy()), axis=-1)
+        # Average return
+        ret.append(paths['rwd'].sum().item() / paths['nb_paths'])
+        ret_ln.set_data(iter_numbers, ret)
+        ret_ax.relim()
+        ret_ax.autoscale()
 
-    np.save("ppo_furuta_dat", data)
+        # Entropy
+        ent.append(pol.entropy().item())
+        ent_ln.set_data(iter_numbers, ent)
+        ent_ax.relim()
+        ent_ax.autoscale()
+
+        fig.canvas.draw()
+        fig.tight_layout()
+
+        return ret_ln,
+
+    ani = FuncAnimation(fig, update, frames=pol_iter,
+                        init_func=lambda: (ret_ln,),
+                        blit=True, repeat=False)
+    plt.show()
+
+
+if __name__ == '__main__':
+    main()
