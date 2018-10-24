@@ -14,10 +14,10 @@ class CoilBase(gym.Env):
         self.timing = Timing(fs, fs_ctrl)
 
         # Limits
-        act_max = np.array([25.0])
-        state_min, state_max = np.array([0.0, -10.0]), np.array([3.0, 10.0])
-        sens_min, sens_max = np.array([0.0, -10.0]), np.array([3.0, 10.0])
-        obs_min, obs_max = np.array([0.0, -10.0]), np.array([3.0, 10.0])
+        act_max = np.array([24.0])
+        state_min, state_max = np.array([0.0, -1e3]), np.array([3.0, 1e3])
+        sens_min, sens_max = np.array([0.0, -1e3]), np.array([3.0, 1e3])
+        obs_min, obs_max = np.array([0.0, -1e3]), np.array([3.0, 1e3])
 
         # Spaces
         self.state_space = LabeledBox(
@@ -40,11 +40,7 @@ class CoilBase(gym.Env):
         self._np_random = None
         self.seed()
 
-    def _zero_sim_step(self):
-        # TODO: Make sure sending float64 is OK with real robot interface
-        return self._sim_step(np.array([0.0]))
-
-    def _sim_step(self, a):
+    def _sim_step(self, s, a):
         """
         Update internal state of simulation and return an estimate thereof.
 
@@ -58,7 +54,8 @@ class CoilBase(gym.Env):
         a_cmd = None
         for _ in range(self.timing.n_sim_per_ctrl):
             a_cmd = np.clip(a, self.action_space.low, self.action_space.high)
-            s = self._sim_step(a_cmd)
+            s = self._sim_step(s, a_cmd)
+            s = np.clip(s, self.state_space.low, self.state_space.high)
         return s, a_cmd  # return the last applied (clipped) command
 
     def _rwd(self, s, a):
@@ -73,7 +70,6 @@ class CoilBase(gym.Env):
     def step(self, a):
         rwd, done = self._rwd(self._state, a)
         self._state, act = self._ctrl_step(a)
-        self._state = np.clip(self._state, self.state_space.low, self.state_space.high)
         obs = self.observe()
         return obs, rwd, done, {'s': self._state, 'a': act}
 
@@ -129,9 +125,9 @@ class LevitationBase(gym.Env):
 
         # Limits
         act_max = np.array([3.0])
-        state_min, state_max = np.array([0.0, -5e-3]), np.array([0.014, 5e-3])
-        sens_min, sens_max = np.array([0.0, -5e-3]), np.array([0.014, 5e-3])
-        obs_min, obs_max = np.array([0.0, -5e-3]), np.array([0.014, 5e-3])
+        state_min, state_max = np.array([0.0, -np.inf]), np.array([0.014, np.inf])
+        sens_min, sens_max = np.array([0.0, -np.inf]), np.array([0.014, np.inf])
+        obs_min, obs_max = np.array([0.0, -np.inf]), np.array([0.014, np.inf])
 
         # Spaces
         self.state_space = LabeledBox(
@@ -148,18 +144,14 @@ class LevitationBase(gym.Env):
             low=-act_max, high=act_max, dtype=np.float32)
         self.reward_range = (0.0, self.timing.dt_ctrl)
 
-        self.xb0 = np.array([0.01]) # operating point
+        self.xb0 = np.array([0.014]) # operating point
         self.xbg = np.array([0.008]) # goal gap
 
         # Initialize random number generator
         self._np_random = None
         self.seed()
 
-    def _zero_sim_step(self):
-        # TODO: Make sure sending float64 is OK with real robot interface
-        return self._sim_step(np.array([0.0]))
-
-    def _sim_step(self, a):
+    def _sim_step(self, s, a):
         """
         Update internal state of simulation and return an estimate thereof.
 
@@ -173,7 +165,8 @@ class LevitationBase(gym.Env):
         a_cmd = None
         for _ in range(self.timing.n_sim_per_ctrl):
             a_cmd = np.clip(a, self.action_space.low, self.action_space.high)
-            s = self._sim_step(a_cmd)
+            s = self._sim_step(s, a_cmd)
+            s = np.clip(s, self.state_space.low, self.state_space.high)
         return s, a_cmd  # return the last applied (clipped) command
 
     def _rwd(self, s, a):
@@ -188,7 +181,6 @@ class LevitationBase(gym.Env):
     def step(self, a):
         rwd, done = self._rwd(self._state, a)
         self._state, act = self._ctrl_step(a)
-        self._state = np.clip(self._state, self.state_space.low, self.state_space.high)
         obs = self.observe()
         return obs, rwd, done, {'s': self._state, 'a': act}
 

@@ -9,15 +9,11 @@ class Coil(CoilBase):
     def __init__(self, fs, fs_ctrl):
         super(Coil, self).__init__(fs, fs_ctrl)
         self.dyn = CoilDynamics()
-        self._sim_state = None
 
-    def _calibrate(self):
-        self._vel_filt = VelocityFilter(self.state_space.shape[0] - 1, dt=self.timing.dt)
-        self._sim_state = np.zeros(self.state_space.shape)
-        self._state = self._zero_sim_step()
+    def _sim_step(self, s, a):
+        self._sim_state = np.copy(s)
 
-    def _sim_step(self, a):
-        sd = self.dyn(self._sim_state, a)
+        sd = self.dyn(s, a)
 
         # Update internal simulation state
         self._sim_state[1] = sd
@@ -25,13 +21,13 @@ class Coil(CoilBase):
 
         # Pretend to only observe position and obtain velocity by filtering
         pos = self._sim_state[0]
-        vel = self._vel_filt(np.array([pos]))
-        return np.concatenate([np.array([pos]), vel])
+
+        vel = self._sim_state[1]
+        return np.concatenate([np.array([pos]), np.array([vel])])
 
     def reset(self):
-        self._calibrate()
-        obs, _, _, _ = self.step(np.array([0.0]))
-        return obs
+        self._state = np.zeros(self.state_space.shape)
+        return self.observe()
 
 
 class Levitation(LevitationBase):
@@ -42,21 +38,16 @@ class Levitation(LevitationBase):
         self.coil = Coil(fs, fs_ctrl)
         self.coil.reset()
 
-        self.pictl = CurrentPICtrl(dt=fs)
+        self.pictl = CurrentPICtrl(dt=fs_ctrl)
 
-        self._sim_state = None
+    def _sim_step(self, s, a):
+        self._sim_state = np.copy(s)
 
-    def _calibrate(self):
-        self._vel_filt = VelocityFilter(self.state_space.shape[0] - 1, dt=self.timing.dt)
-        self._sim_state = np.hstack((self.xb0, 0.0))
-        self._state = self._zero_sim_step()
-
-    def _sim_step(self, a):
         # apply current to levitation
-        xbdd = self.dyn(self._sim_state, self.coil._sim_state)
+        xbdd = self.dyn(self._sim_state, self.coil._state)
 
         # apply reference to PI
-        vc = self.pictl(self.coil._sim_state, a)
+        vc = self.pictl(self.coil._state, a)
 
         # apply PI action to coil
         self.coil.step(vc)
@@ -67,11 +58,17 @@ class Levitation(LevitationBase):
 
         # Pretend to only observe position and obtain velocity by filtering
         pos = self._sim_state[0]
-        vel = self._vel_filt(np.array([pos]))
-        return np.concatenate([np.array([pos]), vel])
+
+        vel = self._sim_state[1]
+        return np.concatenate([np.array([pos]), np.array([vel])])
+
+        # vel = self._vel_filt(np.array(pos))
+        # return np.array([pos, vel[-1]])
 
     def reset(self):
-        self._calibrate()
-        obs, _, _, _ = self.step(np.array([0.0]))
-        return obs
+        self._vel_filt = VelocityFilter(self.state_space.shape[0] - 1,
+                                        num=(2.2207e5, 0), den=(1.0, 848.23, 2.2207e5),
+                                        dt=self.timing.dt)
 
+        self._state = np.hstack((self.xb0, 0.0))
+        return self.observe()
