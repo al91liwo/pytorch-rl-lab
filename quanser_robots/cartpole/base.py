@@ -5,7 +5,9 @@ from quanser_robots.common import LabeledBox
 from scipy.linalg import solve_continuous_are
 np.set_printoptions(precision=6, suppress=True)
 
-
+"""
+TODO: parameter for switching long and short pendulum
+"""
 class CartpoleBase(gym.Env):
     def __init__(self, fs, fs_ctrl):
         super(CartpoleBase, self).__init__()
@@ -147,82 +149,7 @@ class ActionLimiter:
         force = self._joint_lim_violation_force(x)
         return self._clip(force if force else a)
 
-class PhysicSystem:
 
-    def __init__(self, timing, **kwargs):
-        self.timing = timing
-        for k in kwargs:
-            setattr(self, k, kwargs[k])
-            #TODO: make possible also to define it
-            setattr(self, k + "_dot", 0.)
-
-    def add_acceleration(self, **kwargs):
-        for k in kwargs:
-            setattr(self, k + "_dot", getattr(self, k + "_dot") + self.timing.dt * kwargs[k])
-            setattr(self, k, getattr(self, k) + self.timing.dt * getattr(self, k + "_dot"))
-
-    def get_state(self, entities_list):
-        ret = []
-        for k in entities_list:
-            ret.append(getattr(self, k))
-        return np.array(ret)
-
-
-class CartPoleDynamics:
-
-    def __init__(self):
-
-        self._eta_m = 1.            # Motor efficiency  []
-        self._eta_g = 1.             # Planetary Gearbox Efficiency []
-        self._Kg = 3.72             # Planetary Gearbox Gear Ratio
-        self._Jm = 3.9E-7           # Rotor inertia [kg.m^2]
-        self._r_mp = 6.35E-3        # Motor Pinion radius [m]
-        self._Rm = 2.6              # Motor armature Resistence [Ohm]
-        self._Kt = .00767           # Motor Torque Constant [N.zz/A]
-        self._Km = .00767           # Motor Torque Constant [N.zz/A]
-
-        self._mp = 0.127  # mass of the pole [kg]
-        self._mc = 0.38  # mass of the cart [kg]
-        self._pl = 0.3365 / 2.  # half of the pole lenght [m]
-
-        self._Jp = self._pl**2 * self._mp   # Pole inertia [kg.m^2]
-        self._Jeq = self._mc + (self._eta_g * self._Kg**2 * self._Jm)/(self._r_mp**2)
-        self._JT = self._Jeq * self._Jp + self._mp * self._Jp + self._Jeq * self._mp * self._pl**2
-
-        self._Beq = 5.4             # Equivalent Viscous damping Coefficient
-        self._Bp = 0.0024           # Viscous coefficient at the pole
-
-        self._x_lim = 0.814 / 2.  # limit of position of the cart [m]
-
-        self._g = 9.81  # gravitational acceleration [m.s^-2]
-
-        self.A = np.array(
-            [[0.,       0.,     0.02,     0.],
-             [0.,       0.,     0.,     0.02],
-             [0., self._mp**2*self._pl**2*self._g, -(self._Jp +self._mp*self._pl**2)*self._Beq, -self._mp*self._pl*self._Bp],
-             [0.,(self._Jeq+self._mp)*self._mp*self._pl*self._g, -self._mp*self._pl*self._Beq, -(self._Jeq+self._mp)*self._Bp]]
-        )/self._JT
-
-
-        self.B = np.array(
-            [0.,
-             0.,
-             self._Jp+self._mp*self._pl**2,
-             self._mp*self._pl
-             ]
-        )/self._JT
-
-    def __call__(self, s, V_m):
-        x, theta, x_dot, theta_dot = s
-
-        F = (self._eta_g*self._Kg*self._eta_m*self._Kt)/(self._Jeq*self._Rm*self._r_mp) *(-self._Kg*self._Km*x_dot/self._r_mp + self._eta_g*V_m)
-
-        A = np.array([[np.cos(theta), self._pl],
-                      [self._mp + self._mc, self._pl * self._mp * np.cos(theta)]])
-        b = np.array([-self._g * np.sin(theta),
-                      F  + self._mp * self._pl * theta_dot ** 2 * np.sin(theta)])
-
-        return np.linalg.solve(A, b)
 
 
 

@@ -1,5 +1,6 @@
 import numpy as np
 import time
+from .cartpole import CartPoleDynamics
 
 
 class PDCtrl:
@@ -72,3 +73,113 @@ class GoToLimCtrl:
             u = self.u_max
 
         return u
+
+def get_angles(sin_theta, cos_theta):
+    theta = np.arctan2(sin_theta, cos_theta)
+    if theta > 0:
+        alpha = (-np.pi + theta)
+    else:
+        alpha = (np.pi + theta)
+    return alpha, theta
+
+class SwingupCtrl:
+    """Swing up and balancing controller"""
+
+    def __init__(self, long=False, mu=18.):
+        self.dynamics = CartPoleDynamics(long=long)
+        self.mu=mu
+        self.pd_control = False
+        self.pd_activated = False
+        self.done = False
+
+        self.K = np.array([-41.833, 173.4362, -46.1359, 16.2679])
+
+    def __call__(self, state):
+        x,sin_theta,cos_theta, x_dot, theta_dot = state
+
+        alpha, theta = get_angles(sin_theta,cos_theta)
+
+        dyna = self.dynamics
+        Mp = self.dynamics._mp
+        pl = self.dynamics._pl
+        Jp = (pl)**2 * Mp /3.
+
+        Ek = Jp/2. * theta_dot**2
+        Ep = Mp*dyna._g*pl*(1-np.cos(theta))
+        Er = 2*Mp*dyna._g*pl # ==0
+
+        # since we use theta zero in the rest position, we have -theta dot and
+        if np.abs(alpha) < 0.1745 or self.pd_control:
+            if not self.pd_activated:
+                print("PD Control")
+            self.pd_activated = True
+
+            u = np.matmul(self.K, (-np.array([x,alpha,x_dot,theta_dot])))
+        else:
+            umax = 18
+            u = np.clip(self.mu * (Ek+Ep-Er) * np.sign(theta_dot * np.cos(theta)),-umax, umax)
+            if self.pd_activated:
+                print("PD Control Terminated")
+                self.done = True
+                self.pd_activated = False
+
+        Vm = (dyna._Jeq * dyna._Rm * dyna._r_mp*u)/(dyna._eta_g * dyna._Kg * dyna._eta_m * dyna._Kt)\
+              + dyna._Kg * dyna._Km * x_dot / dyna._r_mp
+        Vm = np.clip(Vm,-24,24)
+
+        return [Vm, u]
+
+
+class SwingdownCtrl:
+    """Swing down and keep in center and resting position."""
+
+    def __init__(self, long=False, mu=14., epsilon=1E-4):
+        self.dynamics = CartPoleDynamics(long=long)
+        self.mu = mu
+        self.pd_control = False
+        self.pd_activated = False
+        self.done = False
+        self.epsilon = epsilon
+
+        self.K = np.array([0., 0.1, 0.1, 0.1])
+
+    def __call__(self, state):
+        x,sin_theta,cos_theta, x_dot, theta_dot = state
+
+        alpha, theta = get_angles(sin_theta,cos_theta)
+
+        dyna = self.dynamics
+        Mp = self.dynamics._mp
+        pl = self.dynamics._pl
+        Jp = (pl)**2 * Mp /3.
+
+        Ek = Jp/2. * theta_dot**2
+        Ep = Mp*dyna._g*pl*(1-np.cos(theta))
+        Er = 2*Mp*dyna._g*pl # ==0
+
+        # since we use theta zero in the rest position, we have -theta dot and
+        if np.abs(theta) < 0.025 or self.pd_control:
+            if not self.pd_activated:
+                print("PD")
+                self.pd_activated = True
+
+            u = np.matmul(self.K, (-np.array([x,theta,x_dot,theta_dot])))
+        else:
+            umax = 10
+            mu = self.mu * np.sqrt(np.abs(np.clip(theta_dot,-1,1)))
+            u = -np.clip(mu * (Ek+Ep-Er) * np.sign(theta_dot * np.cos(theta)),-umax, umax)
+            if self.pd_activated:
+                print("energy")
+                self.done = True
+                self.pd_activated = False
+
+        error = np.mean(np.square(np.array([x,theta,x_dot,theta_dot])))
+        if error < self.epsilon:
+            print("Resting position")
+            self.done = True
+
+        Vm = (dyna._Jeq * dyna._Rm * dyna._r_mp*u)/(dyna._eta_g * dyna._Kg * dyna._eta_m * dyna._Kt)\
+              + dyna._Kg * dyna._Km * x_dot / dyna._r_mp
+        Vm = np.clip(Vm,-24,24)
+
+        return [Vm, u]

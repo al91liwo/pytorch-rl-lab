@@ -4,7 +4,6 @@ from ..common import QSocket, VelocityFilter
 from .base import CartpoleBase
 from .ctrl import GoToLimCtrl, PDCtrl
 
-
 class Cartpole(CartpoleBase):
     def __init__(self, ip, fs_ctrl):
         super(Cartpole, self).__init__(fs=500.0, fs_ctrl=fs_ctrl)
@@ -27,7 +26,10 @@ class Cartpole(CartpoleBase):
         sensor = self._qsoc.snd_rcv(np.array([0.0]))
 
         # Reset calibration
-        self._vel_filt = VelocityFilter(self.sensor_space.shape[0], x_init=sensor)
+        wcf = 62.8318
+        zetaf = 0.9
+        self._vel_filt_x = VelocityFilter(2, num=(wcf**2, 0), den=(1, 2*wcf*zetaf, wcf**2), x_init=sensor[0:1], dt=self.timing.dt)
+        self._vel_filt_th = VelocityFilter(2, num=(wcf**2, 0), den=(1, 2*wcf*zetaf, wcf**2), x_init=sensor[1:2], dt=self.timing.dt)
         self._sens_offset = np.zeros(self.sensor_space.shape[0], dtype=np.float32)
 
         # Go to the left:
@@ -99,14 +101,18 @@ class Cartpole(CartpoleBase):
         if self._calibrated:
             pos[0] = (pos[0] - self._x_lim[0]) - 1./2. * (self._x_lim[1] - self._x_lim[0])
 
-        return np.concatenate([pos, self._vel_filt(pos)])
+        x_dot = self._vel_filt_x(pos[0:1])
+        th_dot = self._vel_filt_th(pos[1:2])
+
+        # Limit the angle from -pi to +pi:
+        pos[1] = np.mod(pos[1]+np.pi, 2.*np.pi) - np.pi
+        return np.concatenate([pos,x_dot,th_dot])
 
     def reset(self):
 
         # Reconnect to the system:
         self._qsoc.close()
         self._qsoc.open()
-
         # The system only needs to be calibrated once, as this is a bit time consuming:
         self._calibrate()
 
@@ -118,5 +124,6 @@ class Cartpole(CartpoleBase):
         return
 
     def close(self):
-        self._zero_sim_step()
+        self.step([0.])
+        #self._zero_sim_step()
         self._qsoc.close()
