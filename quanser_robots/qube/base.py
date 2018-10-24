@@ -16,7 +16,7 @@ class QubeBase(gym.Env):
         # Limits
         safety_th_lim = 1.5
         act_max = np.array([5.0])
-        state_max = np.array([2.0, np.pi, 5.0, 8.0])
+        state_max = np.array([2.0, 4.0 * np.pi, 30.0, 40.0])
         sens_max = np.array([2.3, np.inf])
         obs_max = np.array([np.cos(state_max[0]), np.sin(state_max[0]),
                             1.0, 1.0, state_max[2], state_max[3]])
@@ -72,7 +72,7 @@ class QubeBase(gym.Env):
         cost = al_mod**2 + 5e-3*ald**2 + 1e-1*th**2 + 2e-2*thd**2 + 3e-3*a[0]**2
         done = not self.state_space.contains(x)
         rwd = np.exp(-cost) * self.timing.dt_ctrl
-        return np.float32(rwd), False
+        return np.float32(rwd), done
 
     def seed(self, seed=None):
         self._np_random, seed = seeding.np_random(seed)
@@ -81,7 +81,6 @@ class QubeBase(gym.Env):
     def step(self, a):
         rwd, done = self._rwd(self._state, a)
         self._state, act = self._ctrl_step(a)
-        self._state[2:] = np.clip(self._state[2:], -np.array([5.0, 8.0]), np.array([5.0, 8.0]))
         obs = np.float32([np.cos(self._state[0]), np.sin(self._state[0]),
                           np.cos(self._state[1]), np.sin(self._state[1]),
                           self._state[2], self._state[3]])
@@ -109,7 +108,7 @@ class ActionLimiter:
         dn = -self._relu(-th-self._th_lim_max)+self._relu(-th-self._th_lim_min)
         if (th > self._th_lim_min and thd > 0.0 or
                 th < -self._th_lim_min and thd < 0.0):
-            force = 0.5 * self._th_lim_stiffness * (up + dn)
+            force = self._th_lim_stiffness * (up + dn)
         else:
             force = 0.0
         return force
