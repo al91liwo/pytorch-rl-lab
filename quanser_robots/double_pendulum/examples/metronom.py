@@ -33,21 +33,21 @@ class MetronomCtrl:
         t = time.time() - self.start_time
         if not self.done and t > self.dur:
             self.done = True
-            u = 0.0
+            u = 10. * np.sin(2 * np.pi * self.f * t)
         else:
-            u = 0.1 * self.u_max * np.sin(2 * np.pi * self.f * t)
+            u = 10 * np.sin(2 * np.pi * self.f * t)
         return [u]
 
 
 def main():
-    env = gym.make('DoublePendulumRR-v0')
+    env = gym.make('DoublePendulum-v0')
 
-    ctrl = MetronomeCtrl()
+    ctrl = MetronomCtrl()
     obs = env.reset()
-    while not ctrl.done:
+    while True:
         env.render()
         act = ctrl(obs)
-        obs, _, _, _ = env.step(act)
+        obs, _, _, _ = env.step(np.array(act))
 
     env.close()
 

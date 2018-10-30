@@ -1,25 +1,21 @@
 import numpy as np
-import gym
-from gym.utils import seeding
 from quanser_robots.common import LabeledBox
-from scipy.linalg import solve_continuous_are
+from ..common import Base, Timing
 np.set_printoptions(precision=6, suppress=True)
 
-"""
-TODO: parameter for switching long and short pendulum
-"""
-class CartpoleBase(gym.Env):
+
+class CartpoleBase(Base):
+
     def __init__(self, fs, fs_ctrl):
-        super(CartpoleBase, self).__init__()
+
+        super(CartpoleBase, self).__init__(fs, fs_ctrl)
         self._state = None
         self._vel_filt = None
-        self.timing = Timing(fs, fs_ctrl)
 
         # Limits TODO: change limits
         self._x_lim = 0.814 / 2. #[m]
 
-        #safety_th_lim = 1.5
-        act_max = np.array([5.0])
+        act_max = np.array([24.0])
         state_max = np.array([0.814 / 2., np.inf, np.inf, np.inf])
         sens_max = np.array([np.inf, np.inf])
         obs_max = np.array([0.814 / 2. , 1.0,
@@ -40,16 +36,8 @@ class CartpoleBase(gym.Env):
             low=-act_max, high=act_max, dtype=np.float32)
         self.reward_range = (0.0, self.timing.dt_ctrl)
 
-        # Function to ensure that state and action constraints are satisfied
-        self._lim_act = None #ActionLimiter(self.state_space,
-                             #         self.action_space,
-                             #         safety_th_lim)
-
-        # ToDo @Samuele: How are we defining the reward?
-        self.reward_range = (0.0, self.timing.dt_ctrl)
-        safety_th_lim=None
         # Function to ensure that state and action constraints are satisfied:
-        self._lim_act = ActionLimiter(self.state_space, self.action_space, safety_th_lim)
+        self._lim_act = ActionLimiter()
 
 
         # Initialize random number generator
@@ -57,25 +45,7 @@ class CartpoleBase(gym.Env):
         self.seed()
 
     def _zero_sim_step(self):
-        # TODO: Make sure sending float64 is OK with real robot interface
         return self._sim_step([0.0])
-
-    def _sim_step(self, a):
-        """
-        Update internal state of simulation and return an estimate thereof.
-
-        :param a: action
-        :return: state
-        """
-        raise NotImplementedError
-
-    def _ctrl_step(self, a):
-        x = self._state
-        a_cmd = None
-        for _ in range(self.timing.n_sim_per_ctrl):
-            a_cmd = a #self._lim_act(x, a)
-            x = self._sim_step(a_cmd)
-        return x, a_cmd  # return the last applied (clipped) command
 
     def _rwd(self, x, a):
         # TODO: change
@@ -83,71 +53,28 @@ class CartpoleBase(gym.Env):
         rwd = -np.cos(th)
         return np.float32(rwd), False
 
-    def seed(self, seed=None):
-        self._np_random, seed = seeding.np_random(seed)
-        return [seed]
-
     def _observation(self, state):
-        # x, sin(alpha), cos(alpha), x_dot, alpha_dot
+        """
+        A observation is provided given the internal state.
+
+        :param state: (x, theta, x_dot, theta_dot)
+        :type state: np.array
+        :return: (x, sin(theta), cos(theta), x_dot, theta_dot)
+        :rtype: np.array
+        """
         return state[0], np.sin(state[1]), np.cos(state[1]), state[2], state[3]
-
-    def step(self, a):
-        rwd, done = self._rwd(self._state, a)
-        self._state, act = self._ctrl_step(a)
-        obs = self._observation(self._state)
-        return obs, rwd, done, {'s': self._state, 'a': act}
-
-    def reset(self):
-        raise NotImplementedError
-
-    def render(self, mode='human'):
-        raise NotImplementedError
-
-
-class Timing:
-    def __init__(self, fs, fs_ctrl):
-        fs_ctrl_min = 50.0  # minimal control rate
-        assert fs_ctrl >= fs_ctrl_min, \
-            "control frequency must be at least {}".format(fs_ctrl_min)
-        self.n_sim_per_ctrl = int(fs / fs_ctrl)
-        assert fs == fs_ctrl * self.n_sim_per_ctrl, \
-            "sampling frequency must be a multiple of the control frequency"
-        self.dt = 1.0 / fs
-        self.dt_ctrl = 1.0 / fs_ctrl
-        self.render_rate = int(fs_ctrl)
 
 
 class ActionLimiter:
-    def __init__(self, state_space, action_space, th_lim_min):
-        """ I comment otherwise the code is not working
-        self._th_lim_min = th_lim_min
-        self._th_lim_max = (state_space.high[0] + self._th_lim_min) / 2.0
-        self._th_lim_stiffness = \
-            action_space.high[0] / (self._th_lim_max - self._th_lim_min)
-        self._clip = lambda a: np.clip(a, action_space.low, action_space.high)
-        self._relu = lambda x: x * (x > 0.0)
-        """
-    """
-    Michael, the state is encoded x, theta, x_dot, theta_dot
-    I don't understand why do you want to have limit for theta actually
-    """
+
+    def __init__(self):
+        pass
+
     def _joint_lim_violation_force(self, x):
-        """
-        th, _, thd, _ = x
-        up = self._relu(th-self._th_lim_max) - self._relu(th-self._th_lim_min)
-        dn = -self._relu(-th-self._th_lim_max)+self._relu(-th-self._th_lim_min)
-        if (th > self._th_lim_min and thd > 0.0 or
-                th < -self._th_lim_min and thd < 0.0):
-            force = self._th_lim_stiffness * (up + dn)
-        else:
-            force = 0.0
-        return force
-        """
-        return x
+        pass
 
     def __call__(self, x, a):
-        force = self._joint_lim_violation_force(x)
-        return self._clip(force if force else a)
+        return a
 
 
 

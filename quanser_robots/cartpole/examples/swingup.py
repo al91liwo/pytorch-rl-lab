@@ -52,7 +52,7 @@ class PlotSignal:
 
 def main():
     plt.ion()
-    env = gym.make('CartpoleRR-v0')                     # Use "Cartpole-v0" for the simulation
+    env = gym.make('Cartpole-v0')                     # Use "Cartpole-v0" for the simulation
     window = 500
     real_plot = PlotSignal(window=window)
     ctrl = SwingupCtrl(long=False)                      # Use long=True if you are using the long pole
@@ -60,10 +60,10 @@ def main():
     print("Reset done")
     print("Energy Control")
 
-    use_plot = False                                    # Disable for the real system: it slows down
+    use_plot = True                                    # Disable for the real system: it slows down
     collect_fr = 10                                     # Frequency collecting data
     plot_fr = 10                                        # Frequency refresh plot
-    render = False                                      # Render true for visualizing the simulation
+    render = True                                      # Render true for visualizing the simulation
     render_fr = 10                                      # Render frequency: only for simulation
 
     i= 0

@@ -4,6 +4,7 @@ import numpy as np
 from scipy import signal
 import gym
 from gym import spaces
+from gym.utils import seeding
 
 
 class QSocket:
@@ -93,6 +94,7 @@ class VelocityFilter:
         zi = signal.lfilter_zi(self.b, self.a)  # dim = order of the filter = 1
         # Set the filter state
         self.z = zi * x_init.reshape((1, -1))
+        self.z = self.z.T
 
     def __call__(self, x):
         xd, self.z = signal.lfilter(self.b, self.a, x[None, :], 0, self.z)
@@ -134,3 +136,161 @@ class Timing:
         self.dt = 1.0 / fs
         self.dt_ctrl = 1.0 / fs_ctrl
         self.render_rate = int(fs_ctrl)
+
+
+class PhysicSystem:
+
+    def __init__(self, dt, **kwargs):
+        self.dt = dt
+        for k in kwargs:
+            setattr(self, k, kwargs[k])
+            setattr(self, k + "_dot", 0.)
+
+    def add_acceleration(self, **kwargs):
+        for k in kwargs:
+            setattr(self, k + "_dot", getattr(self, k + "_dot") + self.dt * kwargs[k])
+            setattr(self, k, getattr(self, k) + self.dt * getattr(self, k + "_dot"))
+
+    def get_state(self, entities_list):
+        ret = []
+        for k in entities_list:
+            ret.append(getattr(self, k))
+        return np.array(ret)
+
+
+class Base(gym.Env):
+
+    def __init__(self, fs, fs_ctrl):
+        """
+
+        :param fs: frequency of observation
+        :type fs: float
+        :param fs_ctrl: frequency of control
+        :type fs_ctrl: float
+        """
+        super(Base, self).__init__()
+        self._state = None
+        self._vel_filt = None
+        self.timing = Timing(fs, fs_ctrl)
+
+        # Spaces
+        self.sensor_space = None
+        self.state_space = None
+        self.observation_space = None
+        self.action_space = None
+        self.reward_range = None
+
+        # Function to ensure that state and action constraints are satisfied
+        self._lim_act = None
+
+        self.reward_range = None
+        # Function to ensure that state and action constraints are satisfied:
+        self._lim_act = None
+
+        self.seed()
+
+    def _zero_sim_step(self):
+        # TODO: Make sure sending float64 is OK with real robot interface
+        return self._sim_step([0.0])
+
+    def _sim_step(self, a):
+        """
+        Update internal state of simulation and return an estimate thereof.
+
+        :param a: action
+        :type a: np.array
+        :return: state
+        :rtype: np.array
+        """
+        raise NotImplementedError
+
+    def _ctrl_step(self, a):
+        """
+        Control for a number of steps accordingly to the step frequency.
+
+        :param a: action
+        :type a: np.array
+        :return: observed state, and action used
+        :rtype: tuple
+        """
+        x = self._state
+        a_cmd = None
+        for _ in range(self.timing.n_sim_per_ctrl):
+            a_cmd = self._lim_act(x, a)
+            x = self._sim_step(a_cmd)
+        return x, a_cmd
+
+    def _rwd(self, x, a):
+        raise NotImplementedError
+
+    def seed(self, seed=None):
+        """
+        Set the random seed.
+
+        :param seed: random seed
+        :type seed: int
+        :return: list
+        """
+        self._np_random, seed = seeding.np_random(seed)
+        return [seed]
+
+    def _observation(self, state):
+        raise NotImplementedError
+
+    def step(self, a):
+        rwd, done = self._rwd(self._state, a)
+        self._state, act = self._ctrl_step(a)
+        obs = self._observation(self._state)
+        return obs, rwd, done, {'s': self._state, 'a': act}
+
+    def reset(self):
+        raise NotImplementedError
+
+    def render(self, mode='human'):
+        raise NotImplementedError
+
+
+class Simulation(Base):
+
+    def __init__(self, fs, fs_ctrl, dynamics, entities, filters, initial_distr):
+
+        super(Simulation, self).__init__(fs, fs_ctrl)
+        self.entities = entities
+        self.entities_dot = [e + "_dot" for e in self.entities]
+        self.filters = filters
+        self.initial_distr = initial_distr
+
+        self._sim_state = None
+        self.viewer = None
+        self.physics = None
+        self._dynamics = dynamics
+
+    def _calibrate(self):
+
+        initial_values = {}
+        for e in self.entities:
+            v = self.initial_distr[e]()
+            initial_values[e] = v
+
+        self._state = np.array([initial_values[e] for e in self.entities] # system's variable
+                               + [0. for _ in self.entities] ) # system's velocities
+
+        self.physics = PhysicSystem(self.timing.dt, **initial_values)
+        self._sim_state = self.physics.get_state(self.entities + self.entities_dot)
+
+    def _sim_step(self, a):
+        # Add a bit of noise to action for robustness
+        a_noisy = a + 1e-6 * np.float32(np.random.randn(self.action_space.shape[0]))
+        acceleration = {e: v for e, v in zip(self.entities, self._dynamics(self._sim_state, a_noisy))}
+
+        self.physics.add_acceleration(**acceleration)
+
+        self._sim_state = self.physics.get_state(self.entities + self.entities_dot)
+        current_state = self.physics.get_state(self.entities)
+        velocities = np.array([self.filters[e](self._sim_state[i:i+1]) for i, e in enumerate(self.entities)]).ravel()
+        return self._sim_state #np.concatenate([current_state, velocities])
+
+    def reset(self):
+        self._calibrate()
+        return self.step([0.0])[0]
+
