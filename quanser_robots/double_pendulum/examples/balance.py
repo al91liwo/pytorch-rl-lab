@@ -59,18 +59,18 @@ def main():
     ctrl = BalanceCtrl(dt=env.env.timing.dt)
     print("Reset done")
 
-    use_plot = True                                 # Disable for the real system: it slows down
+    use_plot = False                                 # Disable for the real system: it slows down
     collect_fr = 1                                    # Frequency collecting data
-    plot_fr = 100                                       # Frequency refresh plot
-    render = False                                      # Render true for visualizing the simulation
-    render_fr = 1                                     # Render frequency: only for simulation
+    plot_fr = 1                                       # Frequency refresh plot
+    render = True                                      # Render true for visualizing the simulation
+    render_fr = 10                                     # Render frequency: only for simulation
 
     i= 0
-    while not ctrl.done:
+    while not ctrl.done and i < 60. / env.env.timing.dt:
 
         i += 1
         act = ctrl(obs)
-        obs, _, _, _ = env.step(np.array([act[0]]))
+        obs, _, _, _ = env.step(np.array(act[0]))
 
         if render:
             if i % render_fr == 0:
@@ -85,10 +85,10 @@ def main():
             if i % plot_fr == 0:
                 real_plot.plot_signal()
 
-    print("Time %f s" % (i*0.002))
+    print("Time %f s" % (i*env.env.timing.dt))
     env.step(np.array([0.]))
     env.close()
-    input("Finish")
+    print("Finish")
 
 
 if __name__ == "__main__":

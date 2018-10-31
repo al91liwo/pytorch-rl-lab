@@ -1,29 +1,37 @@
 import numpy as np
-from ..common import VelocityFilter, PhysicSystem, Simulation, Timing
+from ..common import VelocityFilter, PhysicSystem, Simulation, Timing, NoFilter
 from .base import DoublePendulumBase
 
 class DoublePendulum(Simulation, DoublePendulumBase):
 
     def __init__(self, fs, fs_ctrl, long_pole=False):
-        wcf = 62.8318
         zetaf = 0.9
+
+        wcf_1 = 2*np.pi*50.
+        wcf_2 = 2*np.pi*10.
+
         DoublePendulumBase.__init__(self, fs, fs_ctrl)
         Simulation.__init__(self, fs,
                                       fs_ctrl,
                                       dynamics=DoublePendulumDynamics(long=long_pole),
                                       entities=['x', 'theta1', 'theta2'],
-                                      filters={
-                                          'x':VelocityFilter(2, num=(wcf**2, 0), den=(1, 2*wcf*zetaf, wcf**2),
-                                                             x_init=np.array([0.]), dt=self.timing.dt),
-                                          'theta1':VelocityFilter(2, num=(wcf**2, 0), den=(1, 2*wcf*zetaf, wcf**2),
-                                                                 x_init=np.array([0.]), dt=self.timing.dt),
-                                          'theta2':VelocityFilter(2, num=(wcf**2, 0), den=(1, 2*wcf*zetaf, wcf**2),
-                                                                 x_init=np.array([0.]), dt=self.timing.dt)
-                                      },
+                                      # filters={
+                                      #     'x':VelocityFilter(2, num=(wcf_1**2, 0), den=(1, 2*wcf_1*zetaf, wcf_1**2),
+                                      #                                                        x_init=np.array([0.]), dt=self.timing.dt),
+                                      #     'theta1':VelocityFilter(2, num=(wcf_2**2, 0), den=(1, 2*wcf_2*zetaf, wcf_2**2),
+                                      #                            x_init=np.array([0.]), dt=self.timing.dt),
+                                      #     'theta2':VelocityFilter(2, num=(wcf_2**2, 0), den=(1, 2*wcf_2*zetaf, wcf_2**2),
+                                      #                            x_init=np.array([0.]), dt=self.timing.dt)
+                                      # },
+                                        filters={
+                                            'x': NoFilter(dt=self.timing.dt),
+                                            'theta1': NoFilter(dt=self.timing.dt),
+                                            'theta2': NoFilter(dt=self.timing.dt)
+                                        },
                                       initial_distr={
                                           'x': lambda: 0.,
-                                          'theta1': lambda: 0.01 * np.random.uniform(-np.pi, np.pi),
-                                          'theta2': lambda: 0.01 * np.random.uniform(-np.pi, np.pi)
+                                          'theta1': lambda: 0.001 * np.random.uniform(-1.,1.),
+                                          'theta2': lambda: 0.001 * np.random.uniform(-1.,1.)
                                       })
 
 
@@ -35,7 +43,8 @@ class DoublePendulum(Simulation, DoublePendulumBase):
         scale = screen_width/world_width
         carty = 100 # TOP OF CART
         polewidth = scale *0.04 * self._dynamics._pl
-        polelen = scale * self._dynamics._pl
+        polelen1 = scale * self._dynamics.l1
+        polelen2 = scale * self._dynamics.l2
         cartwidth = scale *0.3 * self._dynamics._pl
         cartheight = scale *0.2 * self._dynamics._pl
 
@@ -48,11 +57,13 @@ class DoublePendulum(Simulation, DoublePendulumBase):
             self.carttrans = rendering.Transform()
             cart.add_attr(self.carttrans)
             self.viewer.add_geom(cart)
-            l,r,t,b = -polewidth/2,polewidth/2,polelen-polewidth/2,-polewidth/2
+
+            l,r,t,b = -polewidth/2,polewidth/2,polelen1-polewidth/2,-polewidth/2
             pole = rendering.FilledPolygon([(l,b), (l,t), (r,t), (r,b)])
             pole.set_color(.8,.6,.4)
             self.poletrans = rendering.Transform(translation=(0, axleoffset))
 
+            l,r,t,b = -polewidth/2,polewidth/2,polelen2-polewidth/2,-polewidth/2
             pole2 = rendering.FilledPolygon([(l, b), (l, t), (r, t), (r, b)])
             self.pole2trans = rendering.Transform(translation=(0, axleoffset))
             pole2.set_color(.8, .6, .4)
@@ -80,8 +91,8 @@ class DoublePendulum(Simulation, DoublePendulumBase):
         cartx = x[0]*scale+screen_width/2.0
         self.carttrans.set_translation(cartx, carty)
         self.poletrans.set_rotation(x[1])
-        self.pole2trans.set_rotation(x[2])
-        self.pole2trans.set_translation(-polelen*np.sin(x[1]), polelen*np.cos(x[1]))
+        self.pole2trans.set_rotation(x[2]+x[1])
+        self.pole2trans.set_translation(-polelen1*np.sin(x[1]), polelen1*np.cos(x[1]))
 
         return self.viewer.render(return_rgb_array = mode=='rgb_array')
 
@@ -111,34 +122,49 @@ class DoublePendulumDynamics:
         self._Jeq = self._mc + (self._eta_g * self._Kg**2 * self._Jm)/(self._r_mp**2)
         self._JT = self._Jeq * self._Jp + self._mp * self._Jp + self._Jeq * self._mp * self._pl**2
 
-        self._Beq = 5.4             # Equivalent Viscous damping Coefficient
+        self._Beq = 4.3            # Equivalent Viscous damping Coefficient
         self._Bp = 0.0024           # Viscous coefficient at the pole
+
+        self.m1, self.m2 = 0.072, 0.127
+        self.l1, self.l2 = 0.1143, 0.1778
+        self.Bp1 = self.Bp2 = 0.0024
+
 
         self._x_lim = 0.814 / 2.  # limit of position of the cart [m]
 
         self._g = 9.81  # gravitational acceleration [m.s^-2]
 
     def __call__(self, s, V_m):
-        x, theta1, theta2,  x_dot, theta1_dot, theta2_dot = s
+        x, alpha1, alpha2,  x_dot, alpha1_dot, alpha2_dot = s
+
+        # Transformation to the system used in the dynamics
+        theta1 = -alpha1
+        theta2 = -alpha2-alpha1
+        theta1_dot = -alpha1_dot
+        theta2_dot = -alpha2_dot - alpha1_dot
 
         F = (self._eta_g * self._Kg * self._eta_m * self._Kt) / (self._Rm * self._r_mp) * (
-                   -self._Kg * self._Km * x_dot / self._r_mp + self._eta_m * (V_m))
+                   -self._Kg * self._Km * x_dot / self._r_mp + self._eta_m * V_m)
 
-        # TODO: put real parameters
-        m, m1, m2 = self._mc, 0.1, 0.1
-        l1, l2 = 0.1, 0.1
+        m, m1, m2 = self._mc, self.m1, self.m2
+        l1, l2 = self.l1, self.l2
+        Bp1, Bp2 = self.Bp1, self.Bp2
+        Beq = self._Beq
 
         A = np.array([[m+m1+m2, l1*(m1+m2)*np.cos(theta1), m2*l2*np.cos(theta2)],
                       [l1*(m1+m2)*np.cos(theta1), l1**2*(m1+m2), l1*l2*m2*np.cos(theta1-theta2)],
                       [l2*m2*np.cos(theta2), l1*l2*m2*np.cos(theta1-theta2), l2**2*m2]], dtype=np.float64)
 
-        # TODO : maybe the viscous coefficient are too high
-        b = np.array([l1*(m1+m2)*theta1_dot**2*np.sin(theta1) + m2*l2*theta2_dot**2*np.sin(theta2) + F,
-                      -l1*l2*m2*theta2_dot**2*np.sin(theta1-theta2) + self._g*(m1+m2)*l1*np.sin(theta1) - 0.001 * theta1_dot,
-                      l1*l2*m2*theta1_dot**2*np.sin(theta1-theta2) + self._g*l2*m2*np.sin(theta2)- 0.001 * theta2_dot
+        b = np.array([l1*(m1+m2)*theta1_dot**2*np.sin(theta1) + m2*l2*theta2_dot**2*np.sin(theta2) + F- Beq*x_dot,
+                      -l1*l2*m2*theta2_dot**2*np.sin(theta1-theta2) + self._g*(m1+m2)*l1*np.sin(theta1)- Bp1*theta1_dot,
+                      l1*l2*m2*theta1_dot**2*np.sin(theta1-theta2) + self._g*l2*m2*np.sin(theta2) - Bp2*(theta2_dot)
                       ], dtype=np.float64)
 
         x_ddot, theta1_ddot, theta2_ddot = np.linalg.solve(A, b)
 
-        return np.array([x_ddot, theta1_ddot, theta2_ddot])
+        # Transformation to the system used externally
+        alpha1_ddot = -theta1_ddot
+        alpha2_ddot = -theta2_ddot - alpha1_ddot
+
+        return np.array([x_ddot, alpha1_ddot, alpha2_ddot])
 
