@@ -70,7 +70,7 @@ class DoublePendulumBase(Base):
         :return: (x, sin(theta), cos(theta), x_dot, theta_dot)
         :rtype: np.array
         """
-        return state[0], np.sin(state[1]), np.cos(state[1]), state[2], state[3]
+        return state
 
 
 class ActionLimiter:

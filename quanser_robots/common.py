@@ -288,9 +288,19 @@ class Simulation(Base):
         self._sim_state = self.physics.get_state(self.entities + self.entities_dot)
         current_state = self.physics.get_state(self.entities)
         velocities = np.array([self.filters[e](self._sim_state[i:i+1]) for i, e in enumerate(self.entities)]).ravel()
-        return self._sim_state #np.concatenate([current_state, velocities])
+        return np.concatenate([current_state, velocities])
 
     def reset(self):
         self._calibrate()
         return self.step([0.0])[0]
 
+class NoFilter:
+
+    def __init__(self, dt=0.002):
+        self.x = 0.
+        self.dt = dt
+
+    def __call__(self, *args, **kwargs):
+        ret = (np.array(args) - self.x)/self.dt
+        self.x = np.array(args)
+        return ret
