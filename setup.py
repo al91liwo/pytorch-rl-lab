@@ -1,7 +1,7 @@
 from setuptools import setup
 
 setup(name='quanser_robots',
-      version='0.0.6',
+      version='0.1.0',
       description='Simulators and control interfaces for Quanser platforms',
       url='https://git.ias.informatik.tu-darmstadt.de/quanser/clients',
       author='Intelligent Autonomous Systems Lab',
