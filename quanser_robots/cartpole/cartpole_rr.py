@@ -5,8 +5,8 @@ from .base import CartpoleBase
 from .ctrl import GoToLimCtrl, PDCtrl
 
 class Cartpole(CartpoleBase):
-    def __init__(self, ip, fs_ctrl):
-        super(Cartpole, self).__init__(fs=500.0, fs_ctrl=fs_ctrl)
+    def __init__(self, ip, fs_ctrl, **kwargs):
+        super(Cartpole, self).__init__(fs=500.0, fs_ctrl=fs_ctrl, **kwargs)
 
         # Initialize Socket:
         self._qsoc = QSocket(ip, x_len=self.sensor_space.shape[0], u_len=self.action_space.shape[0])

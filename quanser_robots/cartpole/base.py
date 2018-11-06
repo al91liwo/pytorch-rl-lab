@@ -6,7 +6,7 @@ np.set_printoptions(precision=6, suppress=True)
 
 class CartpoleBase(Base):
 
-    def __init__(self, fs, fs_ctrl):
+    def __init__(self, fs, fs_ctrl, stabilization=False):
 
         super(CartpoleBase, self).__init__(fs, fs_ctrl)
         self._state = None
@@ -14,6 +14,8 @@ class CartpoleBase(Base):
 
         # Limits TODO: change limits
         self._x_lim = 0.814 / 2. #[m]
+        self.stabilization = stabilization
+        self.stabilization_th = 0.2
 
         act_max = np.array([24.0])
         state_max = np.array([0.814 / 2., np.inf, np.inf, np.inf])
@@ -39,7 +41,6 @@ class CartpoleBase(Base):
         # Function to ensure that state and action constraints are satisfied:
         self._lim_act = ActionLimiter()
 
-
         # Initialize random number generator
         self._np_random = None
         self.seed()
@@ -51,7 +52,14 @@ class CartpoleBase(Base):
         # TODO: change
         _, th, _, _ = x
         rwd = -np.cos(th)
-        return np.float32(rwd), False
+
+        done = self.stabilization and \
+                    ((th > 0. and np.pi-th > self.stabilization_th) or
+                    (th < 0. and -(th + np.pi) > self.stabilization_th))
+
+        done = done or np.abs(x) > self._x_lim
+
+        return np.float32(rwd), done
 
     def _observation(self, state):
         """
