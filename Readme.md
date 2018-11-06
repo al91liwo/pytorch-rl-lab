@@ -47,5 +47,7 @@ Awesome stuff developed by
 - Jonas Eschmann
 - Robin Menzenbach
 - Christian Eilers
+- Samuele Tosatto
+- Michael Lutter
 
 Add your name if you contributed, so that we know whom to blame.
