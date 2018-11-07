@@ -49,9 +49,9 @@ class BallBalancerBase(gym.Env):
         self.state_space = LabeledBox(
             labels=('theta_x', 'theta_y', 'pos_x', 'pos_x', 'theta_x_dot', 'theta_y_dot', 'pos_x_dot', 'pos_x_dot'),
             low=-state_max, high=state_max, dtype=np.float32)
-        # self.observation_space = LabeledBox(
-        #     labels=('?', '?', '?', '?'),
-        #     low=-obs_max, high=obs_max, dtype=np.float32)
+        self.observation_space = LabeledBox(
+            labels=('theta_x', 'theta_y', 'pos_x', 'pos_x'),
+            low=-sens_max, high=sens_max, dtype=np.float32)
         self.action_space = LabeledBox(
             labels=('V_x', 'V_y'),
             low=-act_max, high=act_max, dtype=np.float32)
