@@ -94,7 +94,6 @@ class VelocityFilter:
         zi = signal.lfilter_zi(self.b, self.a)  # dim = order of the filter = 1
         # Set the filter state
         self.z = zi * x_init.reshape((1, -1))
-        self.z = self.z.T
 
     def __call__(self, x):
         xd, self.z = signal.lfilter(self.b, self.a, x[None, :], 0, self.z)
