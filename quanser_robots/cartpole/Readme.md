@@ -61,7 +61,7 @@ In order to control the system, we also need the derivates of this quantities, `
 
 Position| 0 | 1         | 2         | 3     | 4         |
 --------|---|-----------|-----------|-------|-----------|
-Semantic| x |cos(theta) |sin(theta) | x_dot | theta_dot |
+Semantic| x |sin(theta) |cos(theta) | x_dot | theta_dot |
 
 
 Balancing Task for the Real System
