@@ -1,7 +1,9 @@
 import numpy as np
 import gym
-from quanser_robots.cartpole.ctrl import SwingupCtrl, SwingdownCtrl
 import matplotlib.pyplot as plt
+
+from quanser_robots.cartpole.ctrl import SwingupCtrl, SwingdownCtrl
+from quanser_robots.common import GentlyTerminating
 
 
 def get_angles(sin_theta, cos_theta):
@@ -50,16 +52,16 @@ class PlotSignal:
         plt.show()
 
 
-def do_trajectory(env, ctrl, plot, time_steps=2000, use_plot=True,
-                  collect_fr=10, plot_fr=10, render=True, render_fr=True):
+def do_trajectory(env, ctrl, plot, time_steps=10000, use_plot=True,
+                  collect_fr=10, plot_fr=10, render=True, render_fr=10):
 
     obs = env.reset()
     for n in range(time_steps):
         act = ctrl(obs)
         obs, _, done, _ = env.step(np.array([act[0]]))
-
+        #
         # if done:
-        #     print("Reach end")
+        #     print("Error")
         #     break
 
         if render:
@@ -77,15 +79,25 @@ def do_trajectory(env, ctrl, plot, time_steps=2000, use_plot=True,
                 plot.plot_signal()
 
 
+def get_env_and_controller(long_pendulum=True, simulation=True, swinging=True):
+    pendulum_str = {True:"Long", False:"Short"}
+    simulation_str = {True:"", False:"RR"}
+    task_str = {True:"Swing", False:"Stab"}
+
+    env_name = "Cartpole%s%s%s-v0" % (task_str[swinging], pendulum_str[long_pendulum], simulation_str[simulation])
+    return GentlyTerminating(gym.make(env_name)), SwingupCtrl(long=long_pendulum,mu=18.)
+
+
 def main():
+
     plt.ion()
-    # Change from 'CartpoleSwing' to 'CartpoleStab' for task of swinging up or for only stabilization
-    env = gym.make('CartpoleSwing-v0')  # Use "Cartpole-v0" for the simulation
+
+    env, ctrl = get_env_and_controller(long_pendulum=False, simulation=True, swinging=True)
+
     window = 500
     plot = PlotSignal(window=window)
-    ctrl = SwingupCtrl(long=False)  # Use long=True if you are using the long pole
 
-    do_trajectory(env, ctrl, plot, use_plot=False)
+    do_trajectory(env, ctrl, plot, use_plot=False, render_fr=10)
 
     env.step(np.array([0.]))
     env.close()
@@ -94,3 +106,5 @@ def main():
 
 if __name__ == "__main__":
     main()
+
+# Short works with no filter and mu=13

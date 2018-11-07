@@ -3,6 +3,7 @@ from quanser_robots.common import LabeledBox
 from ..common import Base, Timing
 np.set_printoptions(precision=6, suppress=True)
 
+X_LIM = 0.814
 
 class CartpoleBase(Base):
 
@@ -13,14 +14,14 @@ class CartpoleBase(Base):
         self._vel_filt = None
 
         # Limits TODO: change limits
-        self._x_lim = 0.814 / 2. #[m]
+        self._x_lim = X_LIM/2.  #[m]
         self.stabilization = stabilization
         self.stabilization_th = 0.2
 
         act_max = np.array([24.0])
-        state_max = np.array([0.814 / 2., np.inf, np.inf, np.inf])
+        state_max = np.array([self._x_lim, np.inf, np.inf, np.inf])
         sens_max = np.array([np.inf, np.inf])
-        obs_max = np.array([0.814 / 2. , 1.0,
+        obs_max = np.array([self._x_lim , 1.0,
                             1.0, np.inf, np.inf])
 
         # Spaces
@@ -50,14 +51,14 @@ class CartpoleBase(Base):
 
     def _rwd(self, x, a):
         # TODO: change
-        _, th, _, _ = x
+        x_c, th, _, _ = x
         rwd = -np.cos(th)
 
         done = self.stabilization and \
                     ((th > 0. and np.pi-th > self.stabilization_th) or
                     (th < 0. and -(th + np.pi) > self.stabilization_th))
 
-        done = done or np.abs(x) > self._x_lim
+        done = done or np.abs(x_c) > self._x_lim
 
         return np.float32(rwd), done
 

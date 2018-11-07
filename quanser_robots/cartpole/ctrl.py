@@ -85,14 +85,21 @@ def get_angles(sin_theta, cos_theta):
 class SwingupCtrl:
     """Swing up and balancing controller"""
 
-    def __init__(self, long=False, mu=18.):
+    def __init__(self, long=False, mu=18., u_max=18, v_max=24):
         self.dynamics = CartPoleDynamics(long=long)
         self.mu=mu
         self.pd_control = False
         self.pd_activated = False
         self.done = False
 
-        self.K = np.array([-41.833, 173.4362, -46.1359, 16.2679])
+        self.u_max=u_max
+        self.v_max=v_max
+
+        if long:
+            self.K = np.array([-41.833, 189.8393, -47.8483, 28.0941])
+        else:
+            self.K = np.array([-41.833, 173.4362, -46.1359, 16.2679])
+
 
     def __call__(self, state):
         x,sin_theta,cos_theta, x_dot, theta_dot = state
@@ -102,7 +109,7 @@ class SwingupCtrl:
         dyna = self.dynamics
         Mp = self.dynamics._mp
         pl = self.dynamics._pl
-        Jp = (pl)**2 * Mp /3.
+        Jp = self.dynamics._Jp
 
         Ek = Jp/2. * theta_dot**2
         Ep = Mp*dyna._g*pl*(1-np.cos(theta))
@@ -117,7 +124,7 @@ class SwingupCtrl:
             u = np.matmul(self.K, (-np.array([x,alpha,x_dot,theta_dot])))
         else:
             umax = 18
-            u = np.clip(self.mu * (Ek+Ep-Er) * np.sign(theta_dot * np.cos(theta)),-umax, umax)
+            u = np.clip(self.mu * (Ek+Ep-Er) * np.sign(theta_dot * np.cos(theta)),-self.u_max, self.u_max)
             if self.pd_activated:
                 print("PD Control Terminated")
                 self.done = True
@@ -125,7 +132,7 @@ class SwingupCtrl:
 
         Vm = (dyna._Jeq * dyna._Rm * dyna._r_mp*u)/(dyna._eta_g * dyna._Kg * dyna._eta_m * dyna._Kt)\
               + dyna._Kg * dyna._Km * x_dot / dyna._r_mp
-        Vm = np.clip(Vm,-24,24)
+        Vm = np.clip(Vm,-self.v_max,self.v_max)
 
         return [Vm, u]
 

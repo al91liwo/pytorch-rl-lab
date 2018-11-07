@@ -1,27 +1,30 @@
 import numpy as np
 from ..common import VelocityFilter, PhysicSystem, Simulation, Timing, NoFilter
-from .base import CartpoleBase
+from .base import CartpoleBase,X_LIM
 
 class Cartpole(Simulation, CartpoleBase):
 
     def __init__(self, fs, fs_ctrl, long_pole=False, **kwargs):
+        CartpoleBase.__init__(self, fs, fs_ctrl, **kwargs)
+
         wcf = 62.8318
         zetaf = 0.9
-        CartpoleBase.__init__(self, fs, fs_ctrl, **kwargs)
-        
+
         if self.stabilization:
-            theta_init = lambda: np.random.choice([np.random.uniform(-np.pi, np.pi+0.1),
+            theta_init = lambda: np.random.choice([np.random.uniform(-np.pi, -np.pi+0.1),
                                                    np.random.uniform(np.pi -0.1, np.pi)])
+            filter = lambda: NoFilter(dt=self.timing.dt)
         else:
             theta_init = lambda: 0.01 * np.random.uniform(-np.pi, np.pi)
+            filter = lambda: VelocityFilter(2, num=(wcf**2, 0), den=(1, 2*wcf*zetaf, wcf**2), x_init=np.array([0.]), dt=self.timing.dt)
 
         Simulation.__init__(self, fs,
                                       fs_ctrl,
                                       dynamics=CartPoleDynamics(long=long_pole),
                                       entities=['x', 'theta'],
                                       filters={
-                                          'x':NoFilter(dt=self.timing.dt),
-                                          'theta':NoFilter(dt=self.timing.dt)
+                                          'x':filter(),
+                                          'theta':filter()
                                       },
                                       initial_distr={
                                           'x': lambda: 0.,
@@ -33,13 +36,13 @@ class Cartpole(Simulation, CartpoleBase):
         screen_width = 600
         screen_height = 400
 
-        world_width = self._dynamics._x_lim*2
+        world_width = X_LIM
         scale = screen_width/world_width
         carty = 100 # TOP OF CART
-        polewidth = scale *0.04 * self._dynamics._pl
+        polewidth = scale *0.01
         polelen = scale * self._dynamics._pl
-        cartwidth = scale *0.3 * self._dynamics._pl
-        cartheight = scale *0.2 * self._dynamics._pl
+        cartwidth = scale * 0.1
+        cartheight = scale *0.05
 
         if self.viewer is None:
             from gym.envs.classic_control import rendering
@@ -93,34 +96,36 @@ class CartPoleDynamics:
         if long:
             self._mp = 0.23         # mass of the pole [kg]
             self._pl = 0.641 / 2.   # half of the pole lenght [m]
+
+            self._Beq = 1.0  # Equivalent Viscous damping Coefficient 5.4
+            self._Bp = 0.0024 # Viscous coefficient at the pole 0.0024
+            self.ineff=0.64
         else:
             self._mp = 0.127  # mass of the pole [kg]
             self._pl = 0.3365 / 2.  # half of the pole lenght [m]
+            self._Beq = 5.4  # Equivalent Viscous damping Coefficient 5.4
+            self._Bp = 0.0024  # Viscous coefficient at the pole 0.0024
+            self.ineff=0.7
 
         self._Jp = self._pl**2 * self._mp/3.   # Pole inertia [kg.m^2]
         self._Jeq = self._mc + (self._eta_g * self._Kg**2 * self._Jm)/(self._r_mp**2)
-        self._JT = self._Jeq * self._Jp + self._mp * self._Jp + self._Jeq * self._mp * self._pl**2
-
-        self._Beq = 5.4             # Equivalent Viscous damping Coefficient
-        self._Bp = 0.0024           # Viscous coefficient at the pole
-
-        self._x_lim = 0.814 / 2.  # limit of position of the cart [m]
 
         self._g = 9.81  # gravitational acceleration [m.s^-2]
 
     def __call__(self, s, V_m):
         x, theta, x_dot, theta_dot = s
 
-        F = (self._eta_g * self._Kg * self._eta_m * self._Kt) / (self._Rm * self._r_mp) * (
-                   -  self._Kg * self._Km * x_dot / self._r_mp + self._eta_m * (V_m)) #- self._Beq*x_dot
+        F = np.asscalar((self._eta_g * self._Kg *self._eta_m * self._Kt) / (self._Rm * self._r_mp) * (
+                   -  self._Kg * self._Km * x_dot / self._r_mp + self.ineff*self._eta_m * V_m))
 
         A = np.array([[np.cos(theta), self._pl],
                       [self._mp + self._mc, self._pl * self._mp * np.cos(theta)]])
 
-        b = np.array([-self._g * np.sin(theta), # TODO: from - self. bla bla it is new
-                      F + self._mp * self._pl * theta_dot ** 2 * np.sin(theta)])# - 0.1 * theta_dot])
+        b = np.array([-self._g * np.sin(theta) -self._Bp*theta_dot,
+                      F + self._mp * self._pl * theta_dot ** 2 * np.sin(theta) -self._Beq*x_dot])
 
-        x_ddot, alpha_ddot = np.linalg.solve(A, b)
+        x_ddot, theta_ddot = np.linalg.solve(A, b)
 
-        return np.array([x_ddot, alpha_ddot])
+
+        return np.array([x_ddot, theta_ddot])
 
