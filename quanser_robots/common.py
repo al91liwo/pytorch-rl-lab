@@ -77,7 +77,8 @@ class VelocityFilter:
         self.b = derivative_filter[0].ravel().astype(np.float32)
         self.a = derivative_filter[1].astype(np.float32)
         if x_init is None:
-            self.z = np.zeros((1, x_len), dtype=np.float32)
+            self.z = np.zeros((max(len(self.a), len(self.b)) - 1, x_len),
+                              dtype=np.float32)
         else:
             self.set_initial_state(x_init)
 
@@ -93,7 +94,7 @@ class VelocityFilter:
         # Get the initial condition of the filter
         zi = signal.lfilter_zi(self.b, self.a)  # dim = order of the filter = 1
         # Set the filter state
-        self.z = zi * x_init.reshape((1, -1))
+        self.z = np.outer(zi, x_init)
 
     def __call__(self, x):
         xd, self.z = signal.lfilter(self.b, self.a, x[None, :], 0, self.z)

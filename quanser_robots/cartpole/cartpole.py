@@ -16,7 +16,7 @@ class Cartpole(Simulation, CartpoleBase):
             filter = lambda: NoFilter(dt=self.timing.dt)
         else:
             theta_init = lambda: 0.01 * np.random.uniform(-np.pi, np.pi)
-            filter = lambda: VelocityFilter(2, num=(wcf**2, 0), den=(1, 2*wcf*zetaf, wcf**2), x_init=np.array([0.]), dt=self.timing.dt)
+            filter = lambda: VelocityFilter(1, num=(wcf**2, 0), den=(1, 2*wcf*zetaf, wcf**2), x_init=np.array([0.0]), dt=self.timing.dt)
 
         Simulation.__init__(self, fs,
                                       fs_ctrl,
