@@ -5,24 +5,12 @@ from .base import DoublePendulumBase
 class DoublePendulum(Simulation, DoublePendulumBase):
 
     def __init__(self, fs, fs_ctrl, long_pole=False):
-        zetaf = 0.9
-
-        wcf_1 = 2*np.pi*50.
-        wcf_2 = 2*np.pi*10.
 
         DoublePendulumBase.__init__(self, fs, fs_ctrl)
         Simulation.__init__(self, fs,
                                       fs_ctrl,
                                       dynamics=DoublePendulumDynamics(long=long_pole),
                                       entities=['x', 'theta1', 'theta2'],
-                                      # filters={
-                                      #     'x':VelocityFilter(2, num=(wcf_1**2, 0), den=(1, 2*wcf_1*zetaf, wcf_1**2),
-                                      #                                                        x_init=np.array([0.]), dt=self.timing.dt),
-                                      #     'theta1':VelocityFilter(2, num=(wcf_2**2, 0), den=(1, 2*wcf_2*zetaf, wcf_2**2),
-                                      #                            x_init=np.array([0.]), dt=self.timing.dt),
-                                      #     'theta2':VelocityFilter(2, num=(wcf_2**2, 0), den=(1, 2*wcf_2*zetaf, wcf_2**2),
-                                      #                            x_init=np.array([0.]), dt=self.timing.dt)
-                                      # },
                                         filters={
                                             'x': NoFilter(dt=self.timing.dt),
                                             'theta1': NoFilter(dt=self.timing.dt),
