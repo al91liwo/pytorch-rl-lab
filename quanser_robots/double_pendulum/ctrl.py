@@ -96,17 +96,14 @@ class BalanceCtrl:
     def __call__(self, state):
         x,theta1,theta2, x_dot, theta1_dot, theta2_dot = state
 
-        self.x_int = self.x_int + self.dt * (x)
-        dyna = self.dynamics
+        self.x_int = self.x_int + self.dt * x
 
         if np.abs(theta1) < 0.1 and np.abs(theta2) < 0.1:
-            u = np.matmul(self.K, (-np.array([0.,theta1,theta2, 0., theta1_dot, theta2_dot, 0.])))
+            u = np.matmul(self.K, (-np.array([x,theta1,theta2, x_dot, theta1_dot, theta2_dot, self.x_int])))
         else:
             self.done = True
             return [0.,0.]
 
-        Vm = (dyna._Jeq * dyna._Rm * dyna._r_mp*u)/(dyna._eta_g * dyna._Kg * dyna._eta_m * dyna._Kt)\
-              + dyna._Kg * dyna._Km * x_dot / dyna._r_mp
         Vm = np.clip(u,-24,24)
 
         return [Vm, u]
