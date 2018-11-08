@@ -6,12 +6,12 @@ Simulation and control environment for the Quanser 2DoF Ball Balancer (ball-on-p
 
 Package contents
 ----------------
-1. `model.pdf` physical model description (TBD!)
+1. `model.pdf` physical model description
 2. `base.py` common functionality
-3. `ball_balancer.py` simulated environment (TBD!)
+3. `ball_balancer.py` simulated environment
 4. `ball_balancer_rr.py` real robot environment
-5. `ctrl.py` (TBD!)
-6. `examples` example scripts (TBD!)
+5. `ctrl.py` simple controllers
+6. `examples` example scripts
 
 
 Controlling the real robot
