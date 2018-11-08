@@ -50,13 +50,13 @@ class CartpoleBase(Base):
         return self._sim_step([0.0])
 
     def _rwd(self, x, a):
-        # TODO: change
+
         x_c, th, _, _ = x
         rwd = -np.cos(th)
 
         done = self.stabilization and \
                     ((th > 0. and np.pi-th > self.stabilization_th) or
-                    (th < 0. and -(th + np.pi) > self.stabilization_th))
+                    (th < 0. and np.pi+th > self.stabilization_th))
 
         done = done or np.abs(x_c) > self._x_lim
 

@@ -5,18 +5,18 @@ from .base import CartpoleBase,X_LIM
 class Cartpole(Simulation, CartpoleBase):
 
     def __init__(self, fs, fs_ctrl, long_pole=False, **kwargs):
-        CartpoleBase.__init__(self, fs, fs_ctrl, **kwargs)
 
         wcf = 62.8318
         zetaf = 0.9
 
-        if self.stabilization:
+        timing = Timing(fs, fs_ctrl)
+        if kwargs['stabilization']:
             theta_init = lambda: np.random.choice([np.random.uniform(-np.pi, -np.pi+0.1),
                                                    np.random.uniform(np.pi -0.1, np.pi)])
-            filter = lambda: NoFilter(dt=self.timing.dt)
+            filter = lambda: NoFilter(dt=timing.dt)
         else:
             theta_init = lambda: 0.01 * np.random.uniform(-np.pi, np.pi)
-            filter = lambda: VelocityFilter(1, num=(wcf**2, 0), den=(1, 2*wcf*zetaf, wcf**2), x_init=np.array([0.0]), dt=self.timing.dt)
+            filter = lambda: VelocityFilter(1, num=(wcf**2, 0), den=(1, 2*wcf*zetaf, wcf**2), x_init=np.array([0.0]), dt=timing.dt)
 
         Simulation.__init__(self, fs,
                                       fs_ctrl,
@@ -30,6 +30,11 @@ class Cartpole(Simulation, CartpoleBase):
                                           'x': lambda: 0.,
                                           'theta': theta_init
                                       })
+
+        CartpoleBase.__init__(self, fs, fs_ctrl, **kwargs)
+
+        # TODO: quick fix, I whould look on how to correctly use multiclass inheritance in python.
+        #self.stabilization = stab
 
 
     def render(self, mode='human'):
