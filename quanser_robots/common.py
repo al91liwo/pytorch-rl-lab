@@ -238,6 +238,9 @@ class Base(gym.Env):
         raise NotImplementedError
 
     def step(self, a):
+        assert a is not None, "Action should be not None"
+        assert isinstance(a,np.ndarray), "The action should be a ndarray"
+        assert np.all(not np.isnan(a)), "Action NaN is not a valid action"
         rwd, done = self._rwd(self._state, a)
         self._state, act = self._ctrl_step(a)
         obs = self._observation(self._state)
@@ -292,7 +295,7 @@ class Simulation(Base):
 
     def reset(self):
         self._calibrate()
-        return self.step([0.0])[0]
+        return self.step(np.array([0.0]))[0]
 
 class NoFilter:
 
