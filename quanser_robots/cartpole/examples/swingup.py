@@ -59,10 +59,10 @@ def do_trajectory(env, ctrl, plot, time_steps=10000, use_plot=True,
     for n in range(time_steps):
         act = ctrl(obs)
         obs, _, done, _ = env.step(np.array([act[0]]))
-        #
-        # if done:
-        #     print("Error")
-        #     break
+
+        if done:
+            print("Error")
+            break
 
         if render:
             if n % render_fr == 0:
@@ -92,7 +92,7 @@ def main():
 
     plt.ion()
 
-    env, ctrl = get_env_and_controller(long_pendulum=False, simulation=True, swinging=True)
+    env, ctrl = get_env_and_controller(long_pendulum=False, simulation=True, swinging=False)
 
     window = 500
     plot = PlotSignal(window=window)
