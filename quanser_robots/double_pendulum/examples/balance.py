@@ -66,11 +66,14 @@ def main():
     render_fr = 10                                     # Render frequency: only for simulation
 
     i= 0
-    while not ctrl.done and i < 60. / env.env.timing.dt:
+    while not ctrl.done:
 
         i += 1
         act = ctrl(obs)
-        obs, _, _, _ = env.step(np.array(act[0]))
+        obs, _, done, _ = env.step(np.array(act[0]))
+
+        if done:
+            break
 
         if render:
             if i % render_fr == 0:

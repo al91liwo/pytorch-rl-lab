@@ -18,8 +18,8 @@ class DoublePendulum(Simulation, DoublePendulumBase):
                                         },
                                       initial_distr={
                                           'x': lambda: 0.,
-                                          'theta1': lambda: 0.001 * np.random.uniform(-1.,1.),
-                                          'theta2': lambda: 0.001 * np.random.uniform(-1.,1.)
+                                          'theta1': lambda: 0.05 * np.random.uniform(-1.,1.),
+                                          'theta2': lambda: 0.05 * np.random.uniform(-1.,1.)
                                       })
 
 

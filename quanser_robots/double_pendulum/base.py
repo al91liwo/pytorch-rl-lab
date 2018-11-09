@@ -20,6 +20,7 @@ class DoublePendulumBase(Base):
         self._vel_filt = None
 
         # Limits TODO: change limits
+        self.th_lim = 0.2
         self._x_lim = 0.814 / 2. #[m]
 
         act_max = np.array([24.0])
@@ -52,14 +53,24 @@ class DoublePendulumBase(Base):
         self._np_random = None
         self.seed()
 
+    def _limit_act(self, action):
+        if np.abs(action) > 24.:
+            print("Control signal should be between -24V and 24V.")
+        return np.clip(action, -24., 24.)
+
     def _zero_sim_step(self):
         return self._sim_step([0.0])
 
     def _rwd(self, x, a):
-        # TODO: change
-        _, th, _, _, _, _ = x
-        rwd = -np.cos(th)
-        return np.float32(rwd), False
+
+        x_c , th1, th2, _, _, _ = x
+
+        rwd = th1**2 + th2**2
+
+        done = np.abs(th1) > self.th_lim or np.abs(th2) > self.th_lim or np.abs(x_c) > self._x_lim
+
+        return np.float32(rwd), done
+
 
     def _observation(self, state):
         """
