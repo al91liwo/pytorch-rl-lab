@@ -32,7 +32,7 @@ We propose two classic tasks:
 Our System
 ----------
 
-Our Quanser platform, located in Room E325 S2|02, is a system provided with two poles with different lenght and mass. 
+Our Quanser platform, located in Room E303 S2|02, is a system provided with two poles with different lenght and mass. 
 It is possible to easily mount the desired pole on the cart. 
 For this reasons, we defined in our framework only two different environments:
 
