@@ -49,14 +49,19 @@ class CartpoleBase(Base):
     def _zero_sim_step(self):
         return self._sim_step([0.0])
 
+    def _limit_act(self, action):
+        if np.abs(action) > 24.:
+            print("Control signal should be between -24V and 24V.")
+        return np.clip(action, -24., 24.)
+
     def _rwd(self, x, a):
-        # TODO: change
+
         x_c, th, _, _ = x
         rwd = -np.cos(th)
 
         done = self.stabilization and \
                     ((th > 0. and np.pi-th > self.stabilization_th) or
-                    (th < 0. and -(th + np.pi) > self.stabilization_th))
+                    (th < 0. and np.pi+th > self.stabilization_th))
 
         done = done or np.abs(x_c) > self._x_lim
 

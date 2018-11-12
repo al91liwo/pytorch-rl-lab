@@ -15,7 +15,7 @@ register(
 )
 
 register(
-    id='CartpolestabRR-v0',
+    id='CartpoleStabRR-v0',
     entry_point='quanser_robots.cartpole.cartpole_rr:Cartpole',
     max_episode_steps=10000,
     kwargs={'ip': '130.83.164.56', 'fs_ctrl': 500.0, 'stabilization':True}

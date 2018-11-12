@@ -147,7 +147,7 @@ class BallBalancerBase(gym.Env):
         if self._anim_canvas is None:
             self._anim_canvas = vp.canvas(width=800, height=600, title="Quanser Ball Balancer")
             self._anim_ball = vp.sphere(
-                pos=vp.vector(self._state[2], self._state[3], self._dyn.r_ball),
+                pos=vp.vector(self._state[2], self._state[3], self._dyn.r_ball + d_plate/2.),
                 radius=self._dyn.r_ball,
                 mass=self._dyn.m_ball,
                 color=vp.color.red,
@@ -160,7 +160,7 @@ class BallBalancerBase(gym.Env):
                 canvas=self._anim_canvas,
             )
         #  Compute plate orientation
-        a = self._plate_angs[0]  # plate's angle around the y axis (alpha)
+        a = -self._plate_angs[0]  # plate's angle around the y axis (alpha)
         b = self._plate_angs[1]  # plate's angle around the x axis (beta)
 
         # Axis runs along the x direction
@@ -181,14 +181,14 @@ class BallBalancerBase(gym.Env):
         y = self._state[3]  # ball position along the y axis
 
         self._anim_ball.pos = vp.vec(
-            x * vp.cos(b),
-            y * vp.cos(a),
-            self._dyn.r_ball + x * vp.sin(b) + y * vp.sin(a) + vp.cos(a) * d_plate / 2.,
+            x * vp.cos(a),
+            y * vp.cos(b),
+            self._dyn.r_ball + x * vp.sin(a) + y * vp.sin(b) + vp.cos(a) * d_plate / 2.,
         )
 
         # Set caption text
         self._anim_canvas.caption = f"""
-            Plate angles: {b * 180/np.pi :2.2f}, {a * 180/np.pi :2.2f}
+            Plate angles: {a * 180/np.pi :2.2f}, {b * 180/np.pi :2.2f}
             Ball position: {x :1.3f}, {y :1.3f}
             """
 
