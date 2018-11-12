@@ -18,8 +18,7 @@ class QubeBase(gym.Env):
         act_max = np.array([5.0])
         state_max = np.array([2.0, 4.0 * np.pi, 30.0, 40.0])
         sens_max = np.array([2.3, np.inf])
-        obs_max = np.array([np.cos(state_max[0]), np.sin(state_max[0]),
-                            1.0, 1.0, state_max[2], state_max[3]])
+        obs_max = np.array([1.0, 1.0, 1.0, 1.0, state_max[2], state_max[3]])
 
         # Spaces
         self.sensor_space = LabeledBox(
