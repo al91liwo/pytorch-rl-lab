@@ -56,6 +56,11 @@ class BallBalancerSim(BallBalancerBase):
         return self._state.copy(), False
 
     def step(self, action):
+        """
+        Perform one simulation step
+        :param action: agents action in the environment
+        :return: tuple of observation, reward, done-flag, and environment info
+        """
         info = {'action_raw': action}
         # Add a bit of noise to action for robustness
         # action = action + 1e-6 * np.float32(self._np_random.randn(self.action_space.shape[0]))

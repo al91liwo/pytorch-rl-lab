@@ -1,12 +1,16 @@
 import numpy as np
+
+from .base import BallBalancerBase, BallBalancerDynamics
 from ..common import QSocket, VelocityFilter
-from .base import BallBalancerBase
 
 
 class BallBalancerRR(BallBalancerBase):
-    def __init__(self, fs_ctrl, ip="130.83.164.52"):
-        # Call constructor of parent class
+    """
+    Quanser 2 DoF Ball Balancer real robot class.
+    """
+    def __init__(self, fs_ctrl, ip="130.83.164.52", simplified_dyn=False):
         super().__init__(fs=500.0, fs_ctrl=fs_ctrl)
+        self._dyn = BallBalancerDynamics(dt=self.timing.dt, simplified_dyn=simplified_dyn)
 
         # Initialize communication
         self._qsoc = QSocket(ip, self.sensor_space.shape[0], self.action_space.shape[0])
