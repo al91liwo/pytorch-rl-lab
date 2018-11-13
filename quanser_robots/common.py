@@ -321,7 +321,7 @@ class Logger:
 
     def save(self, path=""):
         np.save(path + "act_log.npy", self.act_log)
-        np.save(path + "obs_log.npy", self.act_log)
+        np.save(path + "obs_log.npy", self.obs_log)
         self.obs_log = []
         self.act_log = []
 
