@@ -58,7 +58,7 @@ class CartpoleBase(Base):
 
         x_c, th, _, _ = x
         rwd = -np.cos(th)
-
+        th =np.mod(th+np.pi, 2.*np.pi) - np.pi
         done = self.stabilization and \
                     ((th > 0. and np.pi-th > self.stabilization_th) or
                     (th < 0. and np.pi+th > self.stabilization_th))

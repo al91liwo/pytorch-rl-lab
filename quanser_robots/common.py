@@ -262,7 +262,8 @@ class Simulation(Base):
         super(Simulation, self).__init__(fs, fs_ctrl)
         self.entities = entities
         self.entities_dot = [e + "_dot" for e in self.entities]
-        self.filters = filters
+        self.filters = {}
+        self.filter_init = filters
         self.initial_distr = initial_distr
 
         self._sim_state = None
@@ -276,6 +277,7 @@ class Simulation(Base):
         for e in self.entities:
             v = self.initial_distr[e]()
             initial_values[e] = v
+            self.filters[e] = self.filter_init[e](v)
 
         self._state = np.array([initial_values[e] for e in self.entities] # system's variable
                                + [0. for _ in self.entities] ) # system's velocities
@@ -334,8 +336,8 @@ class Logger:
 
 class NoFilter:
 
-    def __init__(self, dt=0.002):
-        self.x = 0.
+    def __init__(self, x_init=0., dt=0.002):
+        self.x = x_init
         self.dt = dt
 
     def __call__(self, *args, **kwargs):
