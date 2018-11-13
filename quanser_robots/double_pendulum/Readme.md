@@ -35,7 +35,7 @@ Observation of the state space
 
 The overall system can be described by three entities: the position `x` of the cart on the track, the angle `theta1` of first pole w.r.t. the vertical upright position.
 and the relative angle between the two poles `theta2` as shown in figure.
-![cartpole](documentation/double_pendulum.jpg)
+Please refer to [model.pdf](documentation/model.pdf) for the convention used. 
 In order to control the system, we also need the derivates of this quantities, `x_dot`, `theta1_dot` and `theta2_dot`.
 
 
