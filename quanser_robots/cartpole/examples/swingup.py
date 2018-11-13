@@ -3,7 +3,7 @@ import gym
 import matplotlib.pyplot as plt
 
 from quanser_robots.cartpole.ctrl import SwingupCtrl, SwingdownCtrl
-from quanser_robots.common import GentlyTerminating
+from quanser_robots.common import GentlyTerminating, Logger
 
 
 def get_angles(sin_theta, cos_theta):
@@ -85,7 +85,7 @@ def get_env_and_controller(long_pendulum=True, simulation=True, swinging=True):
     task_str = {True:"Swing", False:"Stab"}
 
     env_name = "Cartpole%s%s%s-v0" % (task_str[swinging], pendulum_str[long_pendulum], simulation_str[simulation])
-    return GentlyTerminating(gym.make(env_name)), SwingupCtrl(long=long_pendulum,mu=18.)
+    return Logger(GentlyTerminating(gym.make(env_name))), SwingupCtrl(long=long_pendulum,mu=18.)
 
 
 def main():
@@ -99,10 +99,10 @@ def main():
 
     do_trajectory(env, ctrl, plot, use_plot=False, render_fr=10)
 
+    env.save()
     env.step(np.array([0.]))
     env.close()
-    input("Finish")
-
+    print("End")
 
 if __name__ == "__main__":
     main()
