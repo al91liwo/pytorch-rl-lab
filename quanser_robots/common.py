@@ -185,9 +185,11 @@ class Base(gym.Env):
 
         self.reward_range = None
         # Function to ensure that state and action constraints are satisfied:
-        self._lim_act = None
 
         self.seed()
+
+    def _limit_act(self, action):
+        raise NotImplementedError
 
     def _zero_sim_step(self):
         # TODO: Make sure sending float64 is OK with real robot interface
@@ -296,6 +298,39 @@ class Simulation(Base):
     def reset(self):
         self._calibrate()
         return self.step(np.array([0.0]))[0]
+
+class Logger:
+    """
+    For debugging purposes. Saves a numpy files with a trajectory.
+    """
+    def __init__(self, env):
+        self.env = env
+        self.obs_log = []
+        self.act_log = []
+
+    def reset(self):
+        s = self.env.reset()
+        self.obs_log.append(s)
+        return s
+
+    def step(self,a):
+        s, r, d, i = self.env.step(a)
+        self.obs_log.append(s)
+        self.act_log.append(a)
+        return s, r, d, i
+
+    def save(self, path=""):
+        np.save(path + "act_log.npy", self.act_log)
+        np.save(path + "obs_log.npy", self.act_log)
+        self.obs_log = []
+        self.act_log = []
+
+    def render(self):
+        return self.env.render()
+
+    def close(self):
+        return self.env.close()
+
 
 class NoFilter:
 
