@@ -12,9 +12,9 @@ class DoublePendulum(Simulation, DoublePendulumBase):
                                       dynamics=DoublePendulumDynamics(long=long_pole),
                                       entities=['x', 'theta1', 'theta2'],
                                         filters={
-                                            'x': NoFilter(dt=self.timing.dt),
-                                            'theta1': NoFilter(dt=self.timing.dt),
-                                            'theta2': NoFilter(dt=self.timing.dt)
+                                            'x': lambda x_init: NoFilter(x_init=x_init, dt=self.timing.dt),
+                                            'theta1': lambda x_init: NoFilter(x_init=x_init, dt=self.timing.dt),
+                                            'theta2': lambda x_init: NoFilter(x_init=x_init, dt=self.timing.dt)
                                         },
                                       initial_distr={
                                           'x': lambda: 0.,
