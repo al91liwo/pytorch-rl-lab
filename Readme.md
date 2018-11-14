@@ -22,6 +22,9 @@ If installation worked well, proceed to the robot-specific documentation
 
 - [Qube](quanser_robots/qube/Readme.md)
 - [Ball Balancer](quanser_robots/ball_balancer/Readme.md)
+- [Levitation](quanser_robots/levitation/Readme.md)
+- [Cartpole](quanser_robots/cartpole/Readme.md)
+- [Double Pendulum](quanser_robots/double_pendulum/Readme.md)
 
 If you are getting errors during installation that you do not know how to fix,
 check below whether the requirements are satisfied, and if necessary follow
