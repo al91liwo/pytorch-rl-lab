@@ -13,18 +13,18 @@ class Cartpole(Simulation, CartpoleBase):
         if kwargs['stabilization']:
             theta_init = lambda: np.random.choice([np.random.uniform(-np.pi, -np.pi+0.1),
                                                    np.random.uniform(np.pi -0.1, np.pi)])
-            filter = lambda: NoFilter(dt=timing.dt)
+            filter = lambda init_val: NoFilter(x_init=init_val,dt=timing.dt)
         else:
             theta_init = lambda: 0.01 * np.random.uniform(-np.pi, np.pi)
-            filter = lambda: VelocityFilter(1, num=(wcf**2, 0), den=(1, 2*wcf*zetaf, wcf**2), x_init=np.array([0.0]), dt=timing.dt)
+            filter = lambda init_val: VelocityFilter(1, num=(wcf**2, 0), den=(1, 2*wcf*zetaf, wcf**2), x_init=np.array([init_val]), dt=timing.dt)
 
         Simulation.__init__(self, fs,
                                       fs_ctrl,
                                       dynamics=CartPoleDynamics(long=long_pole),
                                       entities=['x', 'theta'],
                                       filters={
-                                          'x':filter(),
-                                          'theta':filter()
+                                          'x':filter,
+                                          'theta':filter
                                       },
                                       initial_distr={
                                           'x': lambda: 0.,

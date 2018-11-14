@@ -185,9 +185,11 @@ class Base(gym.Env):
 
         self.reward_range = None
         # Function to ensure that state and action constraints are satisfied:
-        self._lim_act = None
 
         self.seed()
+
+    def _limit_act(self, action):
+        raise NotImplementedError
 
     def _zero_sim_step(self):
         # TODO: Make sure sending float64 is OK with real robot interface
@@ -260,7 +262,8 @@ class Simulation(Base):
         super(Simulation, self).__init__(fs, fs_ctrl)
         self.entities = entities
         self.entities_dot = [e + "_dot" for e in self.entities]
-        self.filters = filters
+        self.filters = {}
+        self.filter_init = filters
         self.initial_distr = initial_distr
 
         self._sim_state = None
@@ -274,6 +277,7 @@ class Simulation(Base):
         for e in self.entities:
             v = self.initial_distr[e]()
             initial_values[e] = v
+            self.filters[e] = self.filter_init[e](v)
 
         self._state = np.array([initial_values[e] for e in self.entities] # system's variable
                                + [0. for _ in self.entities] ) # system's velocities
@@ -297,10 +301,43 @@ class Simulation(Base):
         self._calibrate()
         return self.step(np.array([0.0]))[0]
 
+class Logger:
+    """
+    For debugging purposes. Saves a numpy files with a trajectory.
+    """
+    def __init__(self, env):
+        self.env = env
+        self.obs_log = []
+        self.act_log = []
+
+    def reset(self):
+        s = self.env.reset()
+        self.obs_log.append(s)
+        return s
+
+    def step(self,a):
+        s, r, d, i = self.env.step(a)
+        self.obs_log.append(s)
+        self.act_log.append(a)
+        return s, r, d, i
+
+    def save(self, path=""):
+        np.save(path + "act_log.npy", self.act_log)
+        np.save(path + "obs_log.npy", self.obs_log)
+        self.obs_log = []
+        self.act_log = []
+
+    def render(self):
+        return self.env.render()
+
+    def close(self):
+        return self.env.close()
+
+
 class NoFilter:
 
-    def __init__(self, dt=0.002):
-        self.x = 0.
+    def __init__(self, x_init=0., dt=0.002):
+        self.x = x_init
         self.dt = dt
 
     def __call__(self, *args, **kwargs):
