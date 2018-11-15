@@ -37,7 +37,11 @@ class CartpoleBase(Base):
         self.action_space = LabeledBox(
             labels=('volts',),
             low=-act_max, high=act_max, dtype=np.float32)
-        self.reward_range = (0.0, self.timing.dt_ctrl)
+        if self.stabilization:
+            self.reward_range = (np.cos(np.pi-self.stabilization_th),1.)
+        else:
+            self.reward_range = (-1.,1.)
+
 
         # Function to ensure that state and action constraints are satisfied:
         self._lim_act = ActionLimiter()
