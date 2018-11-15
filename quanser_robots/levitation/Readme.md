@@ -5,7 +5,7 @@ Simulation and control environment for the Quanser Levitation.
 
 To see Levitation in action, start the simulated current control demo
 
-    python3 quanser_robots/levitation/examples/current_ctl.py
+    python3 quanser_robots/levitation/examples/clsc_ctl.py
 
 
 Package contents
@@ -14,8 +14,7 @@ Package contents
 2. `base.py` common functionality
 3. `levitation.py` simulated environment
 4. `levitation.py` real robot environment
-5. `ctrl.py` energy-based swing-up controller
-6. `examples` example scripts
+5. `examples` example scripts
 
 
 Controlling the real robot
@@ -34,7 +33,7 @@ To run the swing-up demo on the real robot, perform the following steps:
 
 2. Launch the client application on your machine
 
-        python3 quanser_robots/levitation/examples/current_ctl.py
+        python3 quanser_robots/levitation/examples/clsc_ctl.py
 
 3. At the end of the day, shut down the control server
 
