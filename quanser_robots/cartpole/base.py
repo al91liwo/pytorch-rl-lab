@@ -13,35 +13,36 @@ class CartpoleBase(Base):
         self._state = None
         self._vel_filt = None
 
-        # Limits TODO: change limits
-        self._x_lim = X_LIM/2.  #[m]
         self.stabilization = stabilization
-        self.stabilization_th = 0.2
+        self._x_lim = X_LIM/2.        # [m]
+        self.stabilization_th = 0.2   # [rad]
 
         act_max = np.array([24.0])
         state_max = np.array([self._x_lim, np.inf, np.inf, np.inf])
         sens_max = np.array([np.inf, np.inf])
-        obs_max = np.array([self._x_lim , 1.0,
-                            1.0, np.inf, np.inf])
+        obs_max = np.array([self._x_lim , 1.0, 1.0, np.inf, np.inf])
 
         # Spaces
         self.sensor_space = LabeledBox(
             labels=('x', 'theta'),
             low=-sens_max, high=sens_max, dtype=np.float32)
+
         self.state_space = LabeledBox(
             labels=('x', 'theta', 'x_dot', 'theta_dot'),
             low=-state_max, high=state_max, dtype=np.float32)
+
         self.observation_space = LabeledBox(
             labels=('x',  'sin_th', 'cos_th', 'x_dot', 'th_dot'),
             low=-obs_max, high=obs_max, dtype=np.float32)
+
         self.action_space = LabeledBox(
             labels=('volts',),
             low=-act_max, high=act_max, dtype=np.float32)
+
         if self.stabilization:
             self.reward_range = (np.cos(np.pi-self.stabilization_th),1.)
         else:
             self.reward_range = (-1.,1.)
-
 
         # Function to ensure that state and action constraints are satisfied:
         self._lim_act = ActionLimiter()
