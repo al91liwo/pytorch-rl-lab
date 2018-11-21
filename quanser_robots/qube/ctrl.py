@@ -42,7 +42,7 @@ class GoToLimCtrl:
         self.sign = 1 if positive else -1
         self.u_max = 1.2
         self.cnt = 0
-        self.cnt_done = 300
+        self.cnt_done = 200
 
     def __call__(self, x):
         th, _, thd, _ = x
@@ -105,8 +105,8 @@ class EnergyCtrl:
 class SwingUpCtrl:
     """Hybrid controller (EnergyCtrl, PDCtrl) switching based on alpha."""
 
-    def __init__(self, ref_energy=0.04, energy_gain=50.0, acc_max=3.0,
-                 alpha_max_pd_enable=10.0, pd_gain=None):
+    def __init__(self, ref_energy, energy_gain, acc_max,
+                 alpha_max_pd_enable=20.0, pd_gain=None):
         # Set up the energy pumping controller
         self.en_ctrl = EnergyCtrl(ref_energy, energy_gain, acc_max)
         # Set up the PD controller

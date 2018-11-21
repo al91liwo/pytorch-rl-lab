@@ -13,8 +13,7 @@ plt.style.use('seaborn')
 
 env = GentlyTerminating(gym.make('QubeRR-v0'))
 
-ctrl = SwingUpCtrl(ref_energy=0.03, energy_gain=50.0, acc_max=5.0,
-                   alpha_max_pd_enable=20.0)
+ctrl = SwingUpCtrl(ref_energy=0.03, energy_gain=50.0, acc_max=5.0)
 obs = env.reset()
 s_all, a_all = [], []
 done = False
