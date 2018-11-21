@@ -42,7 +42,7 @@ class GoToLimCtrl:
         self.sign = 1 if positive else -1
         self.u_max = 1.2
         self.cnt = 0
-        self.cnt_done = 100
+        self.cnt_done = 300
 
     def __call__(self, x):
         th, _, thd, _ = x
