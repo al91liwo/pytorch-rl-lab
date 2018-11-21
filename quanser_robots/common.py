@@ -192,7 +192,6 @@ class Base(gym.Env):
         raise NotImplementedError
 
     def _zero_sim_step(self):
-        # TODO: Make sure sending float64 is OK with real robot interface
         return self._sim_step([0.0])
 
     def _sim_step(self, a):
