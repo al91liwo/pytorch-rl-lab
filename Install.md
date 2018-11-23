@@ -7,7 +7,7 @@ however, it can be straightforwardly adapted to any Unix-like system.
 1. Clone this repository into some folder
 
         cd ~; mkdir tmp; cd tmp
-        git clone git@git.ias.informatik.tu-darmstadt.de:quanser/clients.git
+        git clone https://git.ias.informatik.tu-darmstadt.de/quanser/clients.git
 
 2. Make sure you have Python >= 3.5.3 on your system. If that is not the case,
    install Python3.6

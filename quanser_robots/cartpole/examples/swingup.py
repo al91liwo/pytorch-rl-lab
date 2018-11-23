@@ -58,10 +58,10 @@ def do_trajectory(env, ctrl, plot, time_steps=10000, use_plot=True,
     obs = env.reset()
     for n in range(time_steps):
         act = ctrl(obs)
-        obs, _, done, _ = env.step(np.array([act[0]]))
+        obs, _, done, _ = env.step(np.array(act[0]))
 
         if done:
-            print("Error")
+            print("Physical Limits or End of Time reached")
             break
 
         if render:

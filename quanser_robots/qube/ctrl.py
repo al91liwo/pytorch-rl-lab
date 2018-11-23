@@ -36,37 +36,32 @@ class PDCtrl:
 class GoToLimCtrl:
     """Go to joint limits by applying `u_max`; save limit value in `th_lim`."""
 
-    def __init__(self, x_init, positive=True):
+    def __init__(self, positive=True):
         self.done = False
-        self.th_lim = 0.0
-        self.thd_max = 1e-4
+        self.th_lim = 10.0
         self.sign = 1 if positive else -1
         self.u_max = 1.2
         self.cnt = 0
-        self.max_cnt = 500
-        self.th_init = x_init[0]
-        self.delta_th_min = 0.1
+        self.cnt_done = 200
 
     def __call__(self, x):
-        if self.cnt < self.max_cnt:
-            self.cnt += 1
+        th, _, thd, _ = x
+        if np.abs(th - self.th_lim) > 0:
+            self.cnt = 0
+            self.th_lim = th
         else:
-            th, _, thd, _ = x
-            if self.sign * self.th_lim < self.sign * th:
-                self.th_lim = th
-            if np.abs(thd) < self.thd_max and \
-                    np.abs(th - self.th_init) > self.delta_th_min:
-                self.done = True
+            self.cnt += 1
+        self.done = self.cnt == self.cnt_done
         return [self.sign * self.u_max]
 
 
 class CalibrCtrl:
     """Go to joint limits, find midpoint, go to the midpoint."""
 
-    def __init__(self, x_init):
+    def __init__(self):
         self.done = False
-        self.go_right = GoToLimCtrl(x_init, positive=True)
-        self.go_left = GoToLimCtrl(x_init, positive=False)
+        self.go_right = GoToLimCtrl(positive=True)
+        self.go_left = GoToLimCtrl(positive=False)
         self.go_center = PDCtrl()
 
     def __call__(self, x):
@@ -110,8 +105,8 @@ class EnergyCtrl:
 class SwingUpCtrl:
     """Hybrid controller (EnergyCtrl, PDCtrl) switching based on alpha."""
 
-    def __init__(self, ref_energy=0.04, energy_gain=50.0, acc_max=3.0,
-                 alpha_max_pd_enable=10.0, pd_gain=None):
+    def __init__(self, ref_energy, energy_gain, acc_max,
+                 alpha_max_pd_enable=20.0, pd_gain=None):
         # Set up the energy pumping controller
         self.en_ctrl = EnergyCtrl(ref_energy, energy_gain, acc_max)
         # Set up the PD controller

@@ -43,7 +43,7 @@ class DoublePendulumBase(Base):
         self.action_space = LabeledBox(
             labels=('volts',),
             low=-act_max, high=act_max, dtype=np.float32)
-        self.reward_range = (0.0, self.timing.dt_ctrl)
+        self.reward_range = (-2*self.th_lim**2, 0.)
 
         # Function to ensure that state and action constraints are satisfied:
         self._lim_act = ActionLimiter()
@@ -65,7 +65,7 @@ class DoublePendulumBase(Base):
 
         x_c , th1, th2, _, _, _ = x
 
-        rwd = th1**2 + th2**2
+        rwd = -(th1**2 + th2**2)
 
         done = np.abs(th1) > self.th_lim or np.abs(th2) > self.th_lim or np.abs(x_c) > self._x_lim
 
