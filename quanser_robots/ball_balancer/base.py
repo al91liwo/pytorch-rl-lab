@@ -50,8 +50,9 @@ class BallBalancerBase(gym.Env):
             labels=('theta_x', 'theta_y', 'pos_x', 'pos_x', 'theta_x_dot', 'theta_y_dot', 'pos_x_dot', 'pos_x_dot'),
             low=-state_max, high=state_max, dtype=np.float32)
         self.observation_space = LabeledBox(
-            labels=('theta_x', 'theta_y', 'pos_x', 'pos_x'),
-            low=-sens_max, high=sens_max, dtype=np.float32)
+            labels=('theta_x', 'theta_y', 'pos_x', 'pos_x',
+                    'theta_x_dot_filt', 'theta_y_dot_filt', 'pos_x_dot_filt', 'pos_x_dot_filt'),
+            low=-state_max, high=state_max, dtype=np.float32)
         self.action_space = LabeledBox(
             labels=('V_x', 'V_y'),
             low=-act_max, high=act_max, dtype=np.float32)
@@ -138,7 +139,7 @@ class BallBalancerBase(gym.Env):
                 print("last state: ", self._state)
                 print("max state : ", self.state_space.high)
 
-        # Render using vpython
+        # Render using VPython
         import vpython as vp
         vp.rate(30)
         d_plate = 0.01  # only for animation

@@ -35,15 +35,15 @@ class QPDCtrl:
         self.limit_rad = 0.52360  # limit for angle command; see the saturation bock in the referenced mdl-file
         self.kp_servo = 14.  # P-control for servo angle; see the saturation bock in the referenced mdl-file
 
-    def __call__(self, s, x_des=0., y_des=0.):
+    def __call__(self, obs, x_des=0., y_des=0.):
         """
         Calculate the controller output.
-        :param s: state measurement
+        :param obs: state measurement a.k.a. observation
         :param x_des: goal position [m]
         :param y_des: goal position [m]
         :return: action [V]
         """
-        th_x, th_y, x, y, th_x_dot, th_y_dot, x_dot, y_dot = s
+        th_x, th_y, x, y, th_x_dot, th_y_dot, x_dot, y_dot = obs
 
         err = np.array([x_des - x, y_des - y])
         err_dot = np.array([0. - x_dot, 0. - y_dot])
