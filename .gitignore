@@ -1,1 +1,9 @@
-__pycache__/
+.idea
+/.idea
+__pycache__
+/__pycache__
+*.pyc
+/dist/
+/*.egg-info
+.DS_Store
+/quanser_robots

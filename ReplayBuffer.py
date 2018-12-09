@@ -56,15 +56,20 @@ class ReplayBuffer:
 
         batch = random.sample(self.buffer, batch_size)
 
-        s_batch = np.array([b[0] for b in batch])
-        a_batch = np.array([b[1] for b in batch])
-        r_batch = np.array([b[2] for b in batch])
-        s_2_batch = np.array([b[3] for b in batch])
+        s_batch = [b[0] for b in batch]
+        a_batch = np.array([[b[1]] for b in batch])
+        r_batch = np.array([[b[2]] for b in batch])
+        s_2_batch = [b[3] for b in batch]
 
-        return s_batch, a_batch, r_batch, s_2_batch
+        return (s_batch, a_batch, r_batch, s_2_batch)
 
 
-
+    def clear (self):
+        """
+        Clears buffer, sets count to 0
+        """
+        self.buffer.clear()
+        self.count = 0
 
 
 
