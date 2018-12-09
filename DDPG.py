@@ -129,7 +129,6 @@ class DDPG:
 
                         # update critic    
                         self.critic_network.zero_grad()
-                        critic_tensor = torch.cat((y_i, critic_Pred))
                         critic_loss = self.loss(y_i, critic_Pred)
                         print("critic loss: ", critic_loss)
                         critic_loss.backward()
@@ -145,8 +144,8 @@ class DDPG:
                         self.actor_optim.step()
                         
                         self.softUpdate()
+                        #TODO: new epsilon decrease pls :(
                         self.epsilon -= self.decrease
-                        print("epsilon: ", self.epsilon)
 
                         # now use our model to predict :)
                         self.actor_network.eval()

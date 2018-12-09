@@ -44,14 +44,11 @@ class CriticNetwork(nn.Module):
 
         # as in the paper actions were added in the second layer
         # paper: continuous control with deep reinforcement learning
-        #print(z0, z0.shape, y, y.shape)
         z0 = torch.cat((z0, y), 1)
         z0 = self.func1(z0)
         z0 = self.batch_norm0(z0)
         
         z1 = self.ReLU(z0)
         z1 = self.func2(z1)
-        z1 = self.batch_norm1(z1)
-
-        out = self.ReLU(z1)
+        out = self.batch_norm1(z1)
         return out
