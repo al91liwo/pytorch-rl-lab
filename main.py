@@ -11,9 +11,10 @@ ddpg = DDPG(env)
 
 ddpg.train()
 
-done = False
 while True:
+    done = False
     obs = env.reset()
+    total_reward = 0
     while not done:
         #transformation to action
         obs = ddpg.transformObservation(obs)
@@ -23,4 +24,7 @@ while True:
         # no scalar allowed => [action]
         obs, reward, done, _ = env.step([action])
         env.render()
-        print(reward)
+        total_reward += reward
+    print(total_reward)
+
+       

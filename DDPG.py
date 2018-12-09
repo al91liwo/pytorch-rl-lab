@@ -15,7 +15,7 @@ from ReplayBuffer import ReplayBuffer
 class DDPG:
     
     def __init__(self, env, buffer_size=100000, batch_size=64,
-            discount=0.99, epsilon=1., decrease=0.9, tau=1e-3,
+            discount=0.99, epsilon=1., decrease=1e-4, tau=1e-3,
             episodes=10000, n_batches=100,
             noise_func=np.random.rand, 
             transform= lambda x : x, actor_lr=1e-4, critic_lr=1e-4):
@@ -66,12 +66,16 @@ class DDPG:
         atnw = self.actor_target.parameters()
 
         for critic_w, critic_tar_w  in zip(cnw, ctnw):
-            critic_tar_w = self.tau * critic_w \
-                    + (1 - self.tau) * critic_tar_w
+            critic_tar_w.data.copy_(
+                self.tau * critic_w.data \
+                + (1 - self.tau) * critic_tar_w.data
+            )
 
         for actor_w, actor_tar_w in zip(anw, atnw):
-            actor_tar_w = self.tau * actor_w \
-                    + (1 - self.tau) * actor_tar_w
+            actor_tar_w.data.copy_(
+                self.tau * actor_w.data \
+                + (1 - self.tau) * actor_tar_w.data
+            )
 
 
     def train(self):
@@ -121,27 +125,28 @@ class DDPG:
                         actor_Tar_Pred = self.actor_target(s_2_batch)
                         
                         # learning parameter
-                        y_i = r_batch + self.epsilon * self.critic_target(s_2_batch, actor_Tar_Pred)
+                        y_i = r_batch + self.discount * self.critic_target(s_2_batch, actor_Tar_Pred)
 
-                        # update critic
-                        self.critic_optim.zero_grad()
-                        critic_loss = - self.loss(y_i, critic_Pred)
+                        # update critic    
+                        self.critic_network.zero_grad()
+                        critic_tensor = torch.cat((y_i, critic_Pred))
+                        critic_loss = self.loss(y_i, critic_Pred)
                         print("critic loss: ", critic_loss)
                         critic_loss.backward()
                         self.critic_optim.step()
 
                         # update actor
-                        self.actor_optim.zero_grad()
+                        self.actor_network.zero_grad()
                         actor_pred = self.actor_network(s_batch)
-                        updated_critic_pred = self.critic_network(s_batch, a_batch)
-                        actor_loss_tensor = torch.cat((updated_critic_pred, actor_pred))
-                        actor_loss = - torch.mean(actor_loss_tensor)
+                        updated_critic_pred = - self.critic_network(s_batch, actor_pred)
+                        actor_loss = updated_critic_pred.mean()
                         print("actor_loss: ", actor_loss)
                         actor_loss.backward()
                         self.actor_optim.step()
                         
                         self.softUpdate()
-                        self.epsilon *= self.decrease
+                        self.epsilon -= self.decrease
+                        print("epsilon: ", self.epsilon)
 
                         # now use our model to predict :)
                         self.actor_network.eval()
