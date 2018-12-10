@@ -5,7 +5,7 @@ import torch
 import quanser_robots
 from DDPG import DDPG
 
-env = gym.make("Pendulum-v0")
+env = gym.make("Pendulum-v2")
 
 ddpg = DDPG(env)
 
@@ -20,7 +20,8 @@ while True:
         obs = ddpg.transformObservation(obs)
         state = np.reshape(np.array(obs), (1, ddpg.state_dim))
         state = torch.from_numpy(state).type(torch.FloatTensor)
-        action = ddpg.actor_network(state).item()
+        
+        action = ddpg.action_selection(state).item()
         # no scalar allowed => [action]
         obs, reward, done, _ = env.step([action])
         env.render()

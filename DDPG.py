@@ -14,9 +14,9 @@ from ReplayBuffer import ReplayBuffer
 
 class DDPG:
     
-    def __init__(self, env, buffer_size=100000, batch_size=64,
+    def __init__(self, env, buffer_size=1000, batch_size=64,
             discount=0.99, epsilon=1., decrease=1e-4, tau=1e-3,
-            episodes=10000, n_batches=100,
+            episodes=500, n_batches=64,
             noise_func=np.random.rand, 
             transform= lambda x : x, actor_lr=1e-4, critic_lr=1e-4):
         self.env = env
@@ -52,40 +52,30 @@ class DDPG:
         param state: current state
         return: action with highest reward
         """ 
+        self.actor_network.eval()
         action = self.actor_network(state)
         exploration_noise = self.epsilon * self.noise_torch(1)
-
+        self.actor_network.train()
         return action + torch.from_numpy(exploration_noise).type(torch.FloatTensor)
 
 
-    def softUpdate(self):
-        cnw = self.critic_network.parameters()
-        ctnw = self.critic_target.parameters()
-
-        anw = self.actor_network.parameters()
-        atnw = self.actor_target.parameters()
-
-        for critic_w, critic_tar_w  in zip(cnw, ctnw):
-            critic_tar_w.data.copy_(
-                self.tau * critic_w.data \
-                + (1 - self.tau) * critic_tar_w.data
+    def softUpdate(self, source, target):
+        for target_w, source_w  in zip(target.parameters(), source.parameters()):
+            target_w.data.copy_(
+                (1.0 - self.tau) * target_w.data \
+                + self.tau * source_w.data
             )
 
-        for actor_w, actor_tar_w in zip(anw, atnw):
-            actor_tar_w.data.copy_(
-                self.tau * actor_w.data \
-                + (1 - self.tau) * actor_tar_w.data
-            )
 
 
     def train(self):
         print("Training started...")        
-        done = False
 
         for step in range(self.episodes):
             obs = self.env.reset()
             total_reward = 0
-
+            done = False
+            print(step, self.episodes)
             while (not done):
                 obs = self.transformObservation(obs)
                 
@@ -93,9 +83,9 @@ class DDPG:
                 state = torch.from_numpy(state).type(torch.FloatTensor)
                         
                         
-                self.actor_network.eval()
+                
                 action = self.action_selection(state)
-                self.actor_network.train()
+                
 
                 action = action.data.item()
 
@@ -110,7 +100,6 @@ class DDPG:
                             np.reshape(np.array(obs), (1, self.state_dim))
                             ).type(torch.FloatTensor)
                         )
-
                 if self.replayBuffer.count >= self.n_batches:
                         sample_batch = self.replayBuffer.sample_batch(self.batch_size)
                         s_batch, a_batch, r_batch, s_2_batch = sample_batch
@@ -119,8 +108,8 @@ class DDPG:
                         a_batch = torch.from_numpy(a_batch).type(torch.FloatTensor)
                         s_batch = torch.cat(s_batch, dim=0)
                         s_2_batch = torch.cat(s_2_batch, dim=0)
-
-                        # calculates prediction of critic-/actor network
+                   
+                        # calculates prediction of critic_network
                         critic_Pred = self.critic_network(s_batch, a_batch)
                         actor_Tar_Pred = self.actor_target(s_2_batch)
                         
@@ -128,25 +117,31 @@ class DDPG:
                         y_i = r_batch + self.discount * self.critic_target(s_2_batch, actor_Tar_Pred)
 
                         # update critic    
-                        self.critic_network.zero_grad()
+                        self.critic_optim.zero_grad()
                         critic_loss = self.loss(y_i, critic_Pred)
-                        print("critic loss: ", critic_loss)
+                        #print("critic loss: ", critic_loss)
                         critic_loss.backward()
                         self.critic_optim.step()
 
+                        # calculates prediction of actor_network
+                        actor_Pred = self.actor_network(s_batch)
+
                         # update actor
-                        self.actor_network.zero_grad()
-                        actor_pred = self.actor_network(s_batch)
-                        updated_critic_pred = - self.critic_network(s_batch, actor_pred)
-                        actor_loss = updated_critic_pred.mean()
-                        print("actor_loss: ", actor_loss)
-                        actor_loss.backward()
+                        self.actor_optim.zero_grad()
+                        actor_loss = -self.critic_network(s_batch, actor_Pred)
+                        actor_loss = actor_loss.mean()
+                                             
+                        #print("actor_loss: ", actor_loss)
+                        actor_loss.backward()   
                         self.actor_optim.step()
                         
-                        self.softUpdate()
+                        self.softUpdate(self.actor_network, self.actor_target)
+                        self.softUpdate(self.critic_network, self.critic_target)
+                        
                         #TODO: new epsilon decrease pls :(
                         self.epsilon -= self.decrease
+            print("critic loss: ", critic_loss)
+            print("actor_loss: ", actor_loss)
 
-                        # now use our model to predict :)
-                        self.actor_network.eval()
+
                         

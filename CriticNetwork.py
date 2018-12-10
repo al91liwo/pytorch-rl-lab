@@ -49,6 +49,6 @@ class CriticNetwork(nn.Module):
         z0 = self.batch_norm0(z0)
         
         z1 = self.ReLU(z0)
-        z1 = self.func2(z1)
-        out = self.batch_norm1(z1)
+        out = self.func2(z1)
+        out = self.batch_norm1(out)
         return out
