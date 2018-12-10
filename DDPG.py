@@ -16,9 +16,9 @@ class DDPG:
     
     def __init__(self, env, buffer_size=1000, batch_size=64,
             discount=0.99, epsilon=1., decrease=1e-4, tau=1e-3,
-            episodes=500, n_batches=64,
+            episodes=2, n_batches=64,
             noise_func=np.random.rand, 
-            transform= lambda x : x, actor_lr=1e-4, critic_lr=1e-4):
+            transform= lambda x : x, actor_lr=1e-4, critic_lr=1e-3):
         self.env = env
         self.state_dim = env.observation_space.shape[0]
         self.action_dim = env.action_space.shape[0]
