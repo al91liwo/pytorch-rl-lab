@@ -7,7 +7,7 @@ from util import create_tens
 class ActorNetwork(nn.Module):
     
     def __init__(self, input_dim, output_dim, 
-            hidden0=400, hidden1=300, final_w=0.003):
+            hidden0=100, hidden1=50, final_w=0.003):
         super(ActorNetwork, self).__init__()
         # initialize network
         self.input_dim = input_dim
@@ -37,11 +37,10 @@ class ActorNetwork(nn.Module):
         self.Tanh = nn.Tanh()
 
     def forward (self, x):
-        x = self.norm0(x)
         z0 = self.ReLU(self.func0(x))
-        z0 = self.batch_norm0(z0)
+       
         z1 = self.ReLU(self.func1(z0))
-        z1 = self.batch_norm1(z1)
+       
         out = self.Tanh(self.func2(z1))
         return out
 

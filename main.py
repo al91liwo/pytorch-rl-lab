@@ -10,7 +10,7 @@ env = gym.make("Pendulum-v2")
 ddpg = DDPG(env)
 
 ddpg.train()
-
+ddpg.actor_target.eval()
 while True:
     done = False
     obs = env.reset()
@@ -21,11 +21,13 @@ while True:
         state = np.reshape(np.array(obs), (1, ddpg.state_dim))
         state = torch.from_numpy(state).type(torch.FloatTensor)
         
-        action = ddpg.action_selection(state).item()
+        action = ddpg.actor_target(state).item()
         # no scalar allowed => [action]
+        print(action)
         obs, reward, done, _ = env.step([action])
         env.render()
         total_reward += reward
     print(total_reward)
+    
 
        
