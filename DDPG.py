@@ -10,15 +10,15 @@ from ReplayBuffer import ReplayBuffer
 
 class DDPG:
     
-    def __init__(self, env, buffer_size=1000000, batch_size=1024,
-                epsilon=.99,  tau=1e-2, episodes=100, n_batches=10000,
-                transform= lambda x : x, actor_lr=1e-3, critic_lr=1e-3):
+    def __init__(self, env, buffer_size=1000000, batch_size=64,
+                 epsilon=.99, tau=1e-2, episodes=100, warmup_samples=10000,
+                 transform= lambda x : x, actor_lr=1e-3, critic_lr=1e-3):
         self.env = env
         self.state_dim = self.env.observation_space.shape[0]
         self.action_dim = self.env.action_space.shape[0]
 
-        self.actor_network = ActorNetwork(self.state_dim, self.action_dim)
-        self.critic_network = CriticNetwork(self.state_dim, self.action_dim)
+        self.actor_network = ActorNetwork([self.state_dim, 100, 150, 200, 250, 300, self.action_dim])
+        self.critic_network = CriticNetwork([self.state_dim + self.action_dim, 100, 150, 200, 250, 300, 1])
         self.actor_target = copy.deepcopy(self.actor_network)
         self.critic_target = copy.deepcopy(self.critic_network)
         
@@ -29,14 +29,14 @@ class DDPG:
         
         self.replayBuffer = ReplayBuffer(buffer_size)
         self.batch_size = batch_size
-        self.n_batches = n_batches
+        self.n_batches = warmup_samples
 
         self.epsilon = epsilon
 
         self.tau = tau
         self.episodes = episodes
-        
-        self.noise_torch= torch.distributions.Normal(torch.tensor([.0]), torch.tensor([self.env.action_space.high]))
+        print(self.env.action_space.high)
+        self.noise_torch= torch.distributions.normal.Normal(0, self.env.action_space.high[0])
         self.transformObservation = transform
 
     def action_selection(self, state):
@@ -58,7 +58,19 @@ class DDPG:
                 + self.tau * source_w.data
             )
 
+    def update_actor(self, loss):
+        # update actor
+        self.actor_optim.zero_grad()
+        # print("actor_loss: ", actor_loss)
+        loss.backward()
+        self.actor_optim.step()
 
+    def update_critic(self, loss):
+        # update critic
+        self.critic_optim.zero_grad()
+        # print("critic loss: ", critic_loss)
+        loss.backward(retain_graph=True)
+        self.critic_optim.step()
 
     def train(self):
         print("Training started...")
@@ -71,9 +83,8 @@ class DDPG:
             while (not done):
                 action = self.action_selection(state)
                 action = self.noise_torch.sample((self.action_dim,)) + action
-                action = action.item()
 
-                next_state, reward, done, _ = self.env.step([action])
+                next_state, reward, done, _ = self.env.step([action.item()])
                 next_state = self.transformObservation(next_state)
                 next_state = torch.squeeze(torch.from_numpy(next_state).type(torch.FloatTensor))
                 total_reward += reward
@@ -89,7 +100,7 @@ class DDPG:
                         # calculate policy/actor loss
                         actor_loss = self.critic_network(s_batch, self.actor_network(s_batch))
                         actor_loss = - actor_loss.mean()
-                        
+
                         # calculate value/critic loss
                         next_action = self.actor_target(s_2_batch)
                         critic_target_prediction = self.critic_target(s_2_batch, next_action)
@@ -98,18 +109,9 @@ class DDPG:
                         critic_pred = self.critic_network(s_batch, a_batch)
                         critic_loss = self.loss(critic_pred, expected_critic)
 
-                        # update actor
-                        self.actor_optim.zero_grad()                       
-                        #print("actor_loss: ", actor_loss)
-                        actor_loss.backward()   
-                        self.actor_optim.step()
+                        self.update_actor(actor_loss)
+                        self.update_critic(critic_loss)
 
-                        # update critic    
-                        self.critic_optim.zero_grad()
-                        #print("critic loss: ", critic_loss)
-                        critic_loss.backward()
-                        self.critic_optim.step()
-                        
                         self.softUpdate(self.actor_network, self.actor_target)
                         self.softUpdate(self.critic_network, self.critic_target)
 
