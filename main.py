@@ -1,33 +1,41 @@
 import gym
-import numpy as np
 import torch
+import matplotlib.pyplot as plt
 
-import quanser_robots
 from DDPG import DDPG
 
-env = gym.make("Pendulum-v2")
+env = gym.make("Pendulum-v0")
 
-ddpg = DDPG(env)
+
+state_dim = env.observation_space.shape[0]
+action_dim = env.action_space.shape[0]
+
+ddpg = DDPG(env=env, state_dim=state_dim, action_dim=action_dim, episodes=1000)
 
 ddpg.train()
 ddpg.actor_target.eval()
-while True:
+
+episodes = 100
+rew = []
+
+for step in range(episodes):
     done = False
     obs = env.reset()
     total_reward = 0
     while not done:
         #transformation to action
         obs = ddpg.transformObservation(obs)
-        state = np.reshape(np.array(obs), (1, ddpg.state_dim))
-        state = torch.from_numpy(state).type(torch.FloatTensor)
+        state = torch.tensor(obs, dtype=torch.float32)
         
         action = ddpg.actor_target(state).item()
-        # no scalar allowed => [action]
-        print(action)
         obs, reward, done, _ = env.step([action])
-        env.render()
         total_reward += reward
-    print(total_reward)
-    
+        if step == episodes-1:
+            env.render()
 
-       
+    rew.append(total_reward)
+env.close()
+
+plt.plot(range(episodes), rew)
+plt.show()
+print(sum(rew)/len(rew))

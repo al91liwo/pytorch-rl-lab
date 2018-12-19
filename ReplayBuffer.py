@@ -57,10 +57,9 @@ class ReplayBuffer:
 
         batch = random.sample(self.buffer, batch_size)
         s_batch = torch.stack([b[0] for b in batch], dim=0)
-        a_batch = torch.tensor([b[1] for b in batch], dtype=torch.float32)
-        r_batch = torch.tensor([b[2] for b in batch], dtype=torch.float32)
+        a_batch = torch.tensor([b[1] for b in batch], dtype=torch.float32).unsqueeze(1)
+        r_batch = torch.tensor([b[2] for b in batch], dtype=torch.float32).unsqueeze(1)
         s_2_batch = torch.stack([b[3] for b in batch], dim=0)
-
         return (s_batch, a_batch, r_batch, s_2_batch)
 
 

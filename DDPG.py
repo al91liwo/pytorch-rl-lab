@@ -1,28 +1,22 @@
 import copy
-
-import gym
-import matplotlib.pyplot as plt
-import numpy as np
 import torch
 from torch import nn
 
-import quanser_robots
 from ActorNetwork import ActorNetwork
 from CriticNetwork import CriticNetwork
 from ReplayBuffer import ReplayBuffer
-from ounoise import OUNoise
+
 
 
 class DDPG:
     
-    def __init__(self, env, buffer_size=1000000, batch_size=128,
-            discount=0.9, epsilon=.9, decrease=1e-4, tau=1e-2,
-            episodes=100, n_batches=128,
-            transform= lambda x : x, actor_lr=1e-4, critic_lr=1e-3):
+    def __init__(self, env, buffer_size=1000000, batch_size=1024,
+                epsilon=.99,  tau=1e-2, episodes=100, n_batches=10000,
+                transform= lambda x : x, actor_lr=1e-3, critic_lr=1e-3):
         self.env = env
-        self.state_dim = env.observation_space.shape[0]
-        self.action_dim = env.action_space.shape[0]
-        
+        self.state_dim = self.env.observation_space.shape[0]
+        self.action_dim = self.env.action_space.shape[0]
+
         self.actor_network = ActorNetwork(self.state_dim, self.action_dim)
         self.critic_network = CriticNetwork(self.state_dim, self.action_dim)
         self.actor_target = copy.deepcopy(self.actor_network)
@@ -36,14 +30,13 @@ class DDPG:
         self.replayBuffer = ReplayBuffer(buffer_size)
         self.batch_size = batch_size
         self.n_batches = n_batches
-        
-        self.discount = discount
+
         self.epsilon = epsilon
-        self.decrease = decrease
+
         self.tau = tau
         self.episodes = episodes
         
-        self.noise_torch=OUNoise(env.action_space)
+        self.noise_torch= torch.distributions.Normal(torch.tensor([.0]), torch.tensor([self.env.action_space.high]))
         self.transformObservation = transform
 
     def action_selection(self, state):
@@ -68,10 +61,7 @@ class DDPG:
 
 
     def train(self):
-        print("Training started...")        
-
-        i = 0
-        self.noise_torch.reset()
+        print("Training started...")
 
         for step in range(self.episodes):
             total_reward = 0
@@ -79,10 +69,9 @@ class DDPG:
             done = False
             print(step, self.episodes)
             while (not done):
-                i = i +1
                 action = self.action_selection(state)
-                action = action.data.item()
-                action = self.noise_torch.get_action(action, i)
+                action = self.noise_torch.sample((self.action_dim,)) + action
+                action = action.item()
 
                 next_state, reward, done, _ = self.env.step([action])
                 next_state = self.transformObservation(next_state)
@@ -104,7 +93,7 @@ class DDPG:
                         # calculate value/critic loss
                         next_action = self.actor_target(s_2_batch)
                         critic_target_prediction = self.critic_target(s_2_batch, next_action)
-                        expected_critic = r_batch + self.discount * critic_target_prediction
+                        expected_critic = r_batch + self.epsilon * critic_target_prediction
 
                         critic_pred = self.critic_network(s_batch, a_batch)
                         critic_loss = self.loss(critic_pred, expected_critic)
@@ -123,9 +112,7 @@ class DDPG:
                         
                         self.softUpdate(self.actor_network, self.actor_target)
                         self.softUpdate(self.critic_network, self.critic_target)
-                        
-                        #TODO: new epsilon decrease pls :(
-                        self.epsilon -= self.decrease
+
             if self.replayBuffer.count >= self.n_batches:
                 print("critic loss: ", critic_loss)
                 print("actor_loss: ", actor_loss)
