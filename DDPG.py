@@ -17,7 +17,7 @@ class DDPG:
     
     def __init__(self, env, buffer_size=1000000, batch_size=128,
             discount=0.9, epsilon=.9, decrease=1e-4, tau=1e-2,
-            episodes=20, n_batches=128, 
+            episodes=100, n_batches=128,
             transform= lambda x : x, actor_lr=1e-4, critic_lr=1e-3):
         self.env = env
         self.state_dim = env.observation_space.shape[0]
@@ -54,7 +54,7 @@ class DDPG:
         """ 
         self.actor_target.eval()
         action = self.actor_target(state)
-        self.actor_target.train() 
+        self.actor_target.train()
         return action
 
 
@@ -72,44 +72,32 @@ class DDPG:
 
         i = 0
         self.noise_torch.reset()
+
         for step in range(self.episodes):
-            obs = self.env.reset()
             total_reward = 0
+            state = torch.from_numpy(self.transformObservation(self.env.reset())).type(torch.FloatTensor)
             done = False
             print(step, self.episodes)
             while (not done):
-                obs = self.transformObservation(obs)
-
-                state = torch.from_numpy(obs).type(torch.FloatTensor)
-                        
-                        
-                i = i +1 
+                i = i +1
                 action = self.action_selection(state)
                 action = action.data.item()
                 action = self.noise_torch.get_action(action, i)
 
                 next_state, reward, done, _ = self.env.step([action])
                 next_state = self.transformObservation(next_state)
-                next_state = torch.from_numpy(next_state).type(torch.FloatTensor)
-
+                next_state = torch.squeeze(torch.from_numpy(next_state).type(torch.FloatTensor))
                 total_reward += reward
-                next_state = state
+
 
                 # for continuity in replay buffer the next_state should should be a tensor
                 self.replayBuffer.add(state, action, reward, next_state)
+                state = next_state
                 if self.replayBuffer.count >= self.n_batches:
                         sample_batch = self.replayBuffer.sample_batch(self.batch_size)
                         s_batch, a_batch, r_batch, s_2_batch = sample_batch
 
-                        r_batch = torch.from_numpy(r_batch).type(torch.FloatTensor)
-                        a_batch = torch.from_numpy(a_batch).type(torch.FloatTensor)
-                        a_batch = a_batch.squeeze(1)
-                        s_batch = torch.cat(s_batch, dim=0)
-                        s_2_batch = torch.cat(s_2_batch, dim=0)
-                   
-
                         # calculate policy/actor loss
-                        print(s_batch.size())
                         actor_loss = self.critic_network(s_batch, self.actor_network(s_batch))
                         actor_loss = - actor_loss.mean()
                         
@@ -118,7 +106,6 @@ class DDPG:
                         critic_target_prediction = self.critic_target(s_2_batch, next_action)
                         expected_critic = r_batch + self.discount * critic_target_prediction
 
-                        
                         critic_pred = self.critic_network(s_batch, a_batch)
                         critic_loss = self.loss(critic_pred, expected_critic)
 
