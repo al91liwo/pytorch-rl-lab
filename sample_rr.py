@@ -7,11 +7,12 @@ from datetime import datetime
 
 from DDPG import DDPG
 
-environment = "Pendulum-v2"
+environment = "CartpoleStabShort-v0"
 
 env = gym.make(environment)
 
-columnNames = ['theta', 'theta_dot', 'action', 'reward', 'theta\'', 'theta_dot\'']
+columnNames = ['theta', 'sin_theta', 'cos_theta', 'x_dot', 'theta_dot', 'action', 'reward', 'theta\'', 'sin_theta\'', 'cos_theta\'', 'x_dot\'', 'theta_dot\'']
+
 data = []
 episodes = 100
 

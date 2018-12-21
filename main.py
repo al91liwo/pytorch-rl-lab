@@ -8,7 +8,8 @@ from DDPG import DDPG
 
 env = gym.make("CartpoleStabShort-v0")
 
-ddpg = DDPG(env=env, episodes=200, min_batches=200, transform=lambda obs: obs, warmup_samples=20000)
+ddpg = DDPG(env=env, episodes=50, min_batches=200,
+ buffer_size=30000, warmup_samples=20000, batch_size=128)
 
 ddpg.train()
 ddpg.actor_target.eval()
