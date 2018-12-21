@@ -6,9 +6,17 @@ import numpy as np
 
 from DDPG import DDPG
 
-env = gym.make("CartpoleStabShort-v0")
+def ballBalancerObsTransform(obs):
+    if type(obs) is list or type(obs) is tuple:
+        return obs[0]
+    else:
+        return obs
 
-ddpg = DDPG(env=env, episodes=200, min_batches=200, transform=lambda obs: obs, warmup_samples=20000)
+identity = lambda x: x
+
+env = gym.make("CartpoleSwingShort-v0")
+
+ddpg = DDPG(env=env, episodes=50, min_samples_during_trial=100, trial_horizon=500, transform=identity, noise_init=1., warmup_samples=5000, buffer_size=10000, noise_decay=0.95)
 
 ddpg.train()
 ddpg.actor_target.eval()
