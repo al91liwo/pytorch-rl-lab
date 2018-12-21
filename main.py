@@ -6,9 +6,9 @@ import numpy as np
 
 from DDPG import DDPG
 
-env = gym.make("Pendulum-v0")
+env = gym.make("CartpoleStabShort-v0")
 
-ddpg = DDPG(env=env, episodes=50, transform=lambda obs: obs, warmup_samples=4000)
+ddpg = DDPG(env=env, episodes=200, min_batches=200, transform=lambda obs: obs, warmup_samples=20000)
 
 ddpg.train()
 ddpg.actor_target.eval()

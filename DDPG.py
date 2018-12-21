@@ -14,12 +14,13 @@ gc.enable()
 class DDPG:
     
     def __init__(self, env, buffer_size=100000, batch_size=64,
-                 epsilon=.99, tau=1e-2, episodes=50, warmup_samples=5000,
-                 transform= lambda x : x, actor_lr=1e-3, critic_lr=1e-3, max_iteration_time=0.01, noise_decay=1):
+                 epsilon=.99, tau=1e-2, episodes=50, warmup_samples=5000, min_batches=100,
+                 transform= lambda x : x, actor_lr=1e-4, critic_lr=1e-3, noise_decay=1):
         self.env = env
         self.state_dim = self.env.observation_space.shape[0]
         self.action_dim = self.env.action_space.shape[0]
 
+        self.min_batches = min_batches
         actor_param = [self.state_dim, 100, 200, 300, 400, self.action_dim]
         critic_param = [self.state_dim + self.action_dim, 100, 200, 300, 400, 1]
         self.actor_network = ActorNetwork(actor_param)
@@ -107,7 +108,6 @@ class DDPG:
         done = False
         trial_len = 0
         while not done:
-            start = time.time()
             state = self.transformObservation(obs)
 
             action = self.action_selection(torch.squeeze(torch.tensor(state)))
@@ -133,7 +133,7 @@ class DDPG:
             print(i, "/", self.episodes)
             if self.replayBuffer.count >= self.warmup_samples:
                 i += 1
-                for _ in range(trial_len):
+                for _ in range(max(trial_len, self.min_batches)):
                     critic_loss, actor_loss = self.update()
 
                 self.noise_training = torch.distributions.normal.Normal(0, self.env.action_space.high[0]/10*self.noise_decay**i)
