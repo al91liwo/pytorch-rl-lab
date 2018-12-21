@@ -4,6 +4,7 @@ from torch import nn
 import numpy as np
 import gc
 import time
+import pandas as pd
 
 from ActorNetwork import ActorNetwork
 from CriticNetwork import CriticNetwork
@@ -13,10 +14,10 @@ gc.enable()
 
 class DDPG:
     
-    def __init__(self, env, buffer_size=100000, batch_size=64,
-                 epsilon=.99, tau=1e-2, episodes=50, warmup_samples=5000, min_samples_during_trial=1, min_batches=100,
-                 transform= lambda x : x, actor_lr=1e-4, critic_lr=1e-3, noise_decay=.99, trial_horizon=1000,
-                 noise_init=1, actor_hidden_layers=[100, 200, 300, 400], critic_hidden_layers=[100, 200, 300, 400]):
+    def __init__(self, env, buffer_size=10000, batch_size=64,
+                 epsilon=.99, tau=1e-2, episodes=50, warmup_samples=5000, min_samples_during_trial=1, min_batches=20,
+                 transform= lambda x : x, actor_lr=1e-4, critic_lr=1e-3, noise_decay=.99, trial_horizon=1000, warmup_noise=1.,
+                 noise_init=1., actor_hidden_layers=[100, 200, 300, 300], critic_hidden_layers=[100, 200, 300, 300]):
         self.env = env
         self.state_dim = self.env.observation_space.shape[0]
         self.action_dim = self.env.action_space.shape[0]
@@ -24,13 +25,13 @@ class DDPG:
         self.min_batches = min_batches
         actor_param = [self.state_dim, *actor_hidden_layers, self.action_dim]
         critic_param = [self.state_dim + self.action_dim, *critic_hidden_layers, 1]
-        self.actor_network = ActorNetwork(actor_param, final_w=1.)
-        self.critic_network = CriticNetwork(critic_param, final_w=1.)
+        self.actor_network = ActorNetwork(actor_param)
+        self.critic_network = CriticNetwork(critic_param)
         self.actor_target = ActorNetwork(actor_param)
         self.critic_target = CriticNetwork(critic_param)
         
-        self.actor_optim = torch.optim.Adam(self.actor_network.parameters(), lr=actor_lr, weight_decay=1e-5)
-        self.critic_optim = torch.optim.Adam(self.critic_network.parameters(), lr=critic_lr, weight_decay=1e-5)
+        self.actor_optim = torch.optim.Adam(self.actor_network.parameters(), lr=actor_lr, weight_decay=1e-8)
+        self.critic_optim = torch.optim.Adam(self.critic_network.parameters(), lr=critic_lr, weight_decay=1e-8)
 
         self.loss = nn.MSELoss()
         
@@ -43,13 +44,16 @@ class DDPG:
         self.tau = tau
         self.episodes = episodes
 
-        self.noise = torch.distributions.normal.Normal(0, self.env.action_space.high[0]-self.env.action_space.low[0]*noise_init)
+        self.warmup_noise = torch.distributions.normal.Normal(0, self.env.action_space.high[0]*warmup_noise)
+        self.train_noise = torch.distributions.normal.Normal(0, self.env.action_space.high[0]*noise_init)
+        self.noise = self.warmup_noise
         self.noise_init = noise_init
         self.noise_decay = noise_decay
         self.min_samples_during_trial = min_samples_during_trial
         self.trial_horizon = trial_horizon
 
         self.transformObservation = transform
+        self.warmup_complete = False
 
     def action_selection(self, state):
         """
@@ -98,9 +102,6 @@ class DDPG:
         actor_loss = torch.mean(actor_loss)
         self.update_actor(actor_loss)
 
-        self.softUpdate(self.critic_network, self.critic_target)
-        self.softUpdate(self.actor_network, self.actor_target)
-
         return critic_loss, actor_loss
 
     def trial(self, epoch):
@@ -120,7 +121,7 @@ class DDPG:
 
             total_reward += reward
             trial_len += 1
-            if epoch % 10 == 1:
+            if epoch % 10 == 0 and self.warmup_complete:
                 self.env.render()
             # for continuity in replay buffer the next_state should should be a tensor
             self.replayBuffer.add(state, action, reward, next_state)
@@ -136,13 +137,16 @@ class DDPG:
                 trial_len, total_reward = self.trial(i)
                 all_trial_len += trial_len
 
-            print(i, "/", self.episodes, "|", trial_len)
+            print(i, "/", self.episodes, "|", trial_len, "|", total_reward)
             if self.replayBuffer.count >= self.warmup_samples:
+                self.warmup_complete = True
+                self.noise = self.train_noise
                 i += 1
                 for _ in range(max(trial_len, self.min_batches)):
                     critic_loss, actor_loss = self.update()
-
-                self.noise = torch.distributions.normal.Normal(0, self.env.action_space.high[0]*self.noise_init*self.noise_decay**i)
+                    self.softUpdate(self.critic_network, self.critic_target)
+                    self.softUpdate(self.actor_network, self.actor_target)
+                self.train_noise = torch.distributions.normal.Normal(0, self.env.action_space.high[0]*self.noise_init*self.noise_decay**i)
 
                 print("Crititc loss:", critic_loss)
                 print("Actor loss:", actor_loss)

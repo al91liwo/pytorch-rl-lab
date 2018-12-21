@@ -12,16 +12,11 @@ def ballBalancerObsTransform(obs):
     else:
         return obs
 
-<<<<<<< HEAD
-ddpg = DDPG(env=env, episodes=50, min_batches=200,
- buffer_size=30000, warmup_samples=20000, batch_size=128)
-=======
 identity = lambda x: x
 
-env = gym.make("CartpoleSwingShort-v0")
+env = quanser_robots.GentlyTerminating(gym.make("Qube-v0"))
 
-ddpg = DDPG(env=env, episodes=50, min_samples_during_trial=100, trial_horizon=500, transform=identity, noise_init=1., warmup_samples=5000, buffer_size=10000, noise_decay=0.95)
->>>>>>> 06703d0609c2640a5e8ee4bdb6ef1ebf3f59ffa0
+ddpg = DDPG(env=env, min_batches=1, min_samples_during_trial=20, transform=identity, noise_init=1., tau=1e-4, noise_decay=.95, warmup_noise=1., actor_lr=1e-4, warmup_samples=2000, buffer_size=10000, actor_hidden_layers=[100, 200, 300, 300], critic_hidden_layers=[100, 200, 300, 300])
 
 ddpg.train()
 ddpg.actor_target.eval()

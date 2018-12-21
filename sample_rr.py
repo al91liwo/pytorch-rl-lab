@@ -7,9 +7,9 @@ from datetime import datetime
 
 from DDPG import DDPG
 
-environment = "CartpoleStabShort-v0"
+environment = "QubeRR-v0"
 
-env = gym.make(environment)
+env = quanser_robots.GentlyTerminating(gym.make(environment))
 
 columnNames = ['theta', 'sin_theta', 'cos_theta', 'x_dot', 'theta_dot', 'action', 'reward', 'theta\'', 'sin_theta\'', 'cos_theta\'', 'x_dot\'', 'theta_dot\'']
 
