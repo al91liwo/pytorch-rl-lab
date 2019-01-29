@@ -11,14 +11,15 @@ from ReplayBuffer import ReplayBuffer
 class DDPG:
     
     def __init__(self, env, buffer_size=10000, batch_size=64,
-                 epsilon=.99, tau=1e-2, episodes=50, warmup_samples=1000,
-                 transform= lambda x : x, actor_lr=1e-3, critic_lr=1e-3):
+                 gamma=.99, tau=1e-2, episodes=50, warmup_samples=1000,
+                 transform= lambda x : x, actor_lr=1e-3, critic_lr=1e-3,
+                 actor_hidden_layers=[100, 200, 300], critic_hidden_layers=[100, 200, 300]):
         self.env = env
         self.state_dim = self.env.observation_space.shape[0]
         self.action_dim = self.env.action_space.shape[0]
 
-        self.actor_network = ActorNetwork([self.state_dim, 100, 200, 300, self.action_dim])
-        self.critic_network = CriticNetwork([self.state_dim + self.action_dim, 100, 200, 300, 1])
+        self.actor_network = ActorNetwork([self.state_dim, *actor_hidden_layers, self.action_dim], torch.tensor(self.env.action_space.low), torch.tensor(self.env.action_space.high))
+        self.critic_network = CriticNetwork([self.state_dim + self.action_dim, *critic_hidden_layers, 1])
         self.actor_target = copy.deepcopy(self.actor_network)
         self.critic_target = copy.deepcopy(self.critic_network)
         
@@ -31,7 +32,7 @@ class DDPG:
         self.batch_size = batch_size
         self.n_batches = warmup_samples
 
-        self.epsilon = epsilon
+        self.epsilon = gamma
 
         self.tau = tau
         self.episodes = episodes
@@ -84,7 +85,11 @@ class DDPG:
                 action = self.action_selection(torch.squeeze(torch.tensor(state, dtype=torch.float32)))
                 action = self.noise_torch.sample((self.action_dim,)) + action
                 action = [action.item()]
-
+                if action[0] > self.env.action_space.high[0]:
+                    action = [2.0]
+                if action < self.env.action_space.low[0]:
+                    action = [-2.0]
+                print(action)
                 next_state, reward, done, _ = self.env.step(action)
                 next_state = self.transformObservation(next_state)
 
