@@ -24,7 +24,7 @@ class ReplayBuffer:
     def __str__(self):
         return str(self.buffer_size)
 
-    def add(self, s, a ,r, s_2):
+    def add(self, s, a ,r, s_2, done):
         """
         Store transition (s, a, r, s_2) in replay buffer,
         discards oldest transition when buffer is full
@@ -33,7 +33,7 @@ class ReplayBuffer:
         param r: reward for taking action a in state s
         param s_2: reached state for given state s with action a
         """
-        transition = (s, a, r, s_2)
+        transition = (s, a, r, s_2, done)
         if self.count < self.buffer_size:
             self.buffer.append(transition)
             self.count += 1
@@ -56,11 +56,13 @@ class ReplayBuffer:
             batch_size = self.count
 
         batch = random.sample(self.buffer, batch_size)
-        s_batch = torch.stack([b[0] for b in batch], dim=0)
-        a_batch = torch.stack([b[1] for b in batch], dim=0)
+        s_batch = torch.tensor([b[0] for b in batch], dtype=torch.float32)
+        a_batch = torch.tensor([b[1] for b in batch], dtype=torch.float32)
         r_batch = torch.tensor([b[2] for b in batch], dtype=torch.float32).unsqueeze(1)
-        s_2_batch = torch.stack([b[3] for b in batch], dim=0)
-        return (s_batch, a_batch, r_batch, s_2_batch)
+        s_2_batch = torch.tensor([b[3] for b in batch], dtype=torch.float32)
+        done_batch = torch.tensor([b[4] for b in batch], dtype=torch.float32).unsqueeze(1)
+
+        return (s_batch, a_batch, r_batch, s_2_batch, done_batch)
 
 
     def clear (self):

@@ -4,10 +4,10 @@ import matplotlib.pyplot as plt
 
 from DDPG import DDPG
 
-env = gym.make("CartPole-v0")
+env = gym.make("Pendulum-v0")
 
 
-ddpg = DDPG(env=env, episodes=100)
+ddpg = DDPG(env=env, episodes=50)
 
 ddpg.train()
 ddpg.actor_target.eval()
@@ -27,8 +27,8 @@ for step in range(episodes):
         action = ddpg.actor_target(state).item()
         obs, reward, done, _ = env.step([action])
         total_reward += reward
-        # if step == episodes-1:
-        env.render()
+        if step == episodes-1:
+            env.render()
 
     rew.append(total_reward)
 env.close()

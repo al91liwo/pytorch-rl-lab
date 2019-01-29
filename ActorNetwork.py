@@ -22,8 +22,8 @@ class ActorNetwork(nn.Module):
 
         self.layers[-1].weight.data = create_tens((layers[-1], layers[-2]), final_w)
 
-    def forward (self, x):
-        output = torch.clone(x)
+    def forward(self, x):
+        output = x
         for i in range(len(self.layers)-1):
             output = self.activations[i](self.layers[i](output))
         output = self.layers[-1](output)
