@@ -84,12 +84,12 @@ class DDPG:
             while (not done):
                 action = self.action_selection(torch.squeeze(torch.tensor(state, dtype=torch.float32)))
                 action = self.noise_torch.sample((self.action_dim,)) + action
+                action = torch.clamp(action, min=self.env.action_space.low[0].item(), max=self.env.action_space.high[0].item())
+              # if action[0] > self.env.action_space.high[0]:
+              #       action = [2.0]
+              #   if action < self.env.action_space.low[0]:
+              #       action = [-2.0]
                 action = [action.item()]
-                if action[0] > self.env.action_space.high[0]:
-                    action = [2.0]
-                if action < self.env.action_space.low[0]:
-                    action = [-2.0]
-                print(action)
                 next_state, reward, done, _ = self.env.step(action)
                 next_state = self.transformObservation(next_state)
 
