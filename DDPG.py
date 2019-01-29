@@ -83,7 +83,7 @@ class DDPG:
             while (not done):
                 action = self.action_selection(torch.squeeze(torch.tensor(state, dtype=torch.float32)))
                 action = self.noise_torch.sample((self.action_dim,)) + action
-                action = [action.item()]
+                action = action.detach().numpy()
 
                 next_state, reward, done, _ = self.env.step(action)
                 next_state = self.transformObservation(next_state)
