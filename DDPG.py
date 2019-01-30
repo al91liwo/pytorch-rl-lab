@@ -1,6 +1,7 @@
 import copy
 import torch
 from torch import nn
+import numpy as np
 
 from ActorNetwork import ActorNetwork
 from CriticNetwork import CriticNetwork
@@ -16,10 +17,12 @@ class DDPG:
                  transform= lambda x : x, actor_lr=1e-3, critic_lr=1e-3,
                  actor_hidden_layers=[10, 10, 10], critic_hidden_layers=[10, 10, 10]):
         self.env = env
+        self.env_low = self.env.action_space.low
+        self.env_high = self.env.action_space.high
         self.state_dim = self.env.observation_space.shape[0]
         self.action_dim = self.env.action_space.shape[0]
 
-        self.actor_network = ActorNetwork([self.state_dim, *actor_hidden_layers, self.action_dim], torch.tensor(self.env.action_space.low), torch.tensor(self.env.action_space.high))
+        self.actor_network = ActorNetwork([self.state_dim, *actor_hidden_layers, self.action_dim], torch.tensor(self.env_low), torch.tensor(self.env_high))
         self.critic_network = CriticNetwork([self.state_dim + self.action_dim, *critic_hidden_layers, 1])
         self.actor_target = copy.deepcopy(self.actor_network)
         self.critic_target = copy.deepcopy(self.critic_network)
@@ -33,11 +36,11 @@ class DDPG:
         self.batch_size = batch_size
         self.n_batches = warmup_samples
 
-        self.epsilon = gamma
+        self.gamma = gamma
 
         self.tau = tau
         self.episodes = episodes
-        self.noise_torch = torch.distributions.normal.Normal(0, self.env.action_space.high[0])
+        self.noise_torch = torch.distributions.normal.Normal(0, self.env_high[0])
         self.transformObservation = transform
 
     def action_selection(self, state):
@@ -50,7 +53,6 @@ class DDPG:
         action = self.actor_network(state)
         self.actor_network.train()
         return action
-
 
     def softUpdate(self, source, target):
         for target_w, source_w  in zip(target.parameters(), source.parameters()):
@@ -85,6 +87,24 @@ class DDPG:
         torch.save(self.actor_network.state_dict(), actor_path)
         torch.save(self.critic_network.state_dict(), critic_path)
 
+    def update(self):
+        sample_batch = self.replayBuffer.sample_batch(self.batch_size)
+        s_batch, a_batch, r_batch, s_2_batch, done_batch = sample_batch
+
+        # calculate policy/actor loss
+        actor_loss = self.critic_network(s_batch, self.actor_network(s_batch))
+        actor_loss = - actor_loss.mean()
+
+        # calculate value/critic loss
+        next_action = self.actor_target(s_2_batch)
+        critic_target_prediction = self.critic_target(s_2_batch, next_action)
+        expected_critic = r_batch + self.gamma * (1. - done_batch) * critic_target_prediction
+
+        critic_pred = self.critic_network(s_batch, a_batch)
+        critic_loss = self.loss(critic_pred, expected_critic)
+
+        return actor_loss, critic_loss
+
     def train(self):
         print("Training started...")
         total_reward = 0
@@ -95,48 +115,30 @@ class DDPG:
             done = False
             print(step, self.episodes, total_reward)
             total_reward = 0
-            while (not done):
+            while not done:
                 action = self.action_selection(torch.squeeze(torch.tensor(state, dtype=torch.float32)))
                 action = self.noise_torch.sample((self.action_dim,)) + action
-                action = torch.clamp(action, min=self.env.action_space.low[0].item(), max=self.env.action_space.high[0].item())
+                action = torch.clamp(action, min=self.env_low[0].item(), max=self.env_high[0].item())
 
-                action = [action.item()]
+                action = action.detach().numpy()
                 next_state, reward, done, _ = self.env.step(action)
                 next_state = self.transformObservation(next_state)
 
                 total_reward += reward
 
-
-                # for continuity in replay buffer the next_state should should be a tensor
                 self.replayBuffer.add(state, action, reward, next_state, done)
                 state = next_state
                 if self.replayBuffer.count >= self.n_batches:
-                        sample_batch = self.replayBuffer.sample_batch(self.batch_size)
-                        s_batch, a_batch, r_batch, s_2_batch, done_batch = sample_batch
 
-                        # calculate policy/actor loss
-                        actor_loss = self.critic_network(s_batch, self.actor_network(s_batch))
-                        actor_loss = - actor_loss.mean()
+                    actor_loss, critic_loss = self.update()
 
-                        # calculate value/critic loss
-                        next_action = self.actor_target(s_2_batch)
-                        critic_target_prediction = self.critic_target(s_2_batch, next_action)
-                        expected_critic = r_batch + self.epsilon * (1. - done_batch) * critic_target_prediction
+                    self.update_actor(actor_loss)
+                    self.update_critic(critic_loss)
 
-                        critic_pred = self.critic_network(s_batch, a_batch)
-                        critic_loss = self.loss(critic_pred, expected_critic)
-
-                        self.update_actor(actor_loss)
-                        self.update_critic(critic_loss)
-
-                        self.softUpdate(self.actor_network, self.actor_target)
-                        self.softUpdate(self.critic_network, self.critic_target)
-
+                    self.softUpdate(self.actor_network, self.actor_target)
+                    self.softUpdate(self.critic_network, self.critic_target)
 
             if self.replayBuffer.count >= self.n_batches:
                 print("critic loss: ", critic_loss)
                 print("actor_loss: ", actor_loss)
                 step += 1
-            
-
-                        

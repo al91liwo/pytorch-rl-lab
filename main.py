@@ -1,14 +1,15 @@
 import gym
 import torch
 import matplotlib.pyplot as plt
-
+import quanser_robots
 from DDPG import DDPG
 
-env_name = "Pendulum-v0"
+env_name = "CartpoleStabShort-v0"
 env = gym.make(env_name)
 
 
-ddpg = DDPG(env=env, episodes=50)
+ddpg = DDPG(env=env, episodes=50,
+            actor_hidden_layers=[300, 400, 300], critic_hidden_layers=[300, 400, 300])
 
 ddpg.train()
 ddpg.actor_target.eval()
@@ -21,12 +22,11 @@ for step in range(episodes):
     obs = env.reset()
     total_reward = 0
     while not done:
-        #transformation to action
         obs = ddpg.transformObservation(obs)
         state = torch.tensor(obs, dtype=torch.float32)
         
-        action = ddpg.actor_target(state).item()
-        obs, reward, done, _ = env.step([action])
+        action = ddpg.actor_target(state).detach().numpy()
+        obs, reward, done, _ = env.step(action)
         total_reward += reward
         if step == episodes-1:
             env.render()
