@@ -5,7 +5,8 @@ from torch import nn
 from ActorNetwork import ActorNetwork
 from CriticNetwork import CriticNetwork
 from ReplayBuffer import ReplayBuffer
-
+import os
+import datetime
 
 
 class DDPG:
@@ -13,7 +14,7 @@ class DDPG:
     def __init__(self, env, buffer_size=10000, batch_size=64,
                  gamma=.99, tau=1e-2, episodes=50, warmup_samples=1000,
                  transform= lambda x : x, actor_lr=1e-3, critic_lr=1e-3,
-                 actor_hidden_layers=[100, 200, 300], critic_hidden_layers=[100, 200, 300]):
+                 actor_hidden_layers=[10, 10, 10], critic_hidden_layers=[10, 10, 10]):
         self.env = env
         self.state_dim = self.env.observation_space.shape[0]
         self.action_dim = self.env.action_space.shape[0]
@@ -72,10 +73,23 @@ class DDPG:
         loss.backward(retain_graph=True)
         self.critic_optim.step()
 
+    def save_model(self, env_name, actor_path=None, critic_path=None):
+        if not os.path.exists('models/'):
+            os.makedirs('models/')
+        suffix = datetime.datetime.now()
+        if actor_path is None:
+            actor_path = "models/ddpg_actor_{}_{}".format(env_name, suffix)
+        if critic_path is None:
+            critic_path = "models/ddpg_critic_{}_{}".format(env_name, suffix)
+        print('Saving models to {} and {}'.format(actor_path, critic_path))
+        torch.save(self.actor_network.state_dict(), actor_path)
+        torch.save(self.critic_network.state_dict(), critic_path)
+
     def train(self):
         print("Training started...")
         total_reward = 0
-        for step in range(self.episodes):
+        step = 0
+        while step < self.episodes:
 
             state = self.transformObservation(self.env.reset())
             done = False
@@ -85,10 +99,7 @@ class DDPG:
                 action = self.action_selection(torch.squeeze(torch.tensor(state, dtype=torch.float32)))
                 action = self.noise_torch.sample((self.action_dim,)) + action
                 action = torch.clamp(action, min=self.env.action_space.low[0].item(), max=self.env.action_space.high[0].item())
-              # if action[0] > self.env.action_space.high[0]:
-              #       action = [2.0]
-              #   if action < self.env.action_space.low[0]:
-              #       action = [-2.0]
+
                 action = [action.item()]
                 next_state, reward, done, _ = self.env.step(action)
                 next_state = self.transformObservation(next_state)
@@ -121,9 +132,11 @@ class DDPG:
                         self.softUpdate(self.actor_network, self.actor_target)
                         self.softUpdate(self.critic_network, self.critic_target)
 
+
             if self.replayBuffer.count >= self.n_batches:
                 print("critic loss: ", critic_loss)
                 print("actor_loss: ", actor_loss)
+                step += 1
             
 
                         

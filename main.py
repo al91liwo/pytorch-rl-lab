@@ -4,7 +4,8 @@ import matplotlib.pyplot as plt
 
 from DDPG import DDPG
 
-env = gym.make("Pendulum-v0")
+env_name = "Pendulum-v0"
+env = gym.make(env_name)
 
 
 ddpg = DDPG(env=env, episodes=50)
@@ -36,3 +37,4 @@ env.close()
 plt.plot(range(episodes), rew)
 plt.show()
 print(sum(rew)/len(rew))
+ddpg.save_model(env_name)
