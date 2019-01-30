@@ -19,6 +19,7 @@ class DDPG:
         self.env = env
         self.env_low = self.env.action_space.low
         self.env_high = self.env.action_space.high
+        print(self.env_low, self.env_high)
         self.state_dim = self.env.observation_space.shape[0]
         self.action_dim = self.env.action_space.shape[0]
 
@@ -93,7 +94,7 @@ class DDPG:
 
         # calculate policy/actor loss
         actor_loss = self.critic_network(s_batch, self.actor_network(s_batch))
-        actor_loss = - actor_loss.mean()
+        actor_loss = actor_loss.mean() # it makes difference if you do gradient ascent or descent for your problem, you idiot
 
         # calculate value/critic loss
         next_action = self.actor_target(s_2_batch)
@@ -113,7 +114,7 @@ class DDPG:
 
             state = self.transformObservation(self.env.reset())
             done = False
-            print(step, self.episodes, total_reward)
+            print(step, "/", self.episodes, "|", total_reward, "|", self.replayBuffer.count, "/", self.replayBuffer.buffer_size)
             total_reward = 0
             while not done:
                 action = self.action_selection(torch.squeeze(torch.tensor(state, dtype=torch.float32)))

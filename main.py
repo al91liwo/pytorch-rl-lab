@@ -8,8 +8,8 @@ env_name = "CartpoleStabShort-v0"
 env = gym.make(env_name)
 
 
-ddpg = DDPG(env=env, episodes=50,
-            actor_hidden_layers=[300, 400, 300], critic_hidden_layers=[300, 400, 300])
+ddpg = DDPG(env=env, episodes=50, warmup_samples=1000,
+            actor_hidden_layers=[300, 400, 300, 200], critic_hidden_layers=[300, 400, 300, 200])
 
 ddpg.train()
 ddpg.actor_target.eval()
@@ -28,7 +28,7 @@ for step in range(episodes):
         action = ddpg.actor_target(state).detach().numpy()
         obs, reward, done, _ = env.step(action)
         total_reward += reward
-        if step == episodes-1:
+        if step >= episodes-10:
             env.render()
 
     rew.append(total_reward)
