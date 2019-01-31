@@ -14,7 +14,7 @@ ddpg = DDPG(env=env, episodes=100, warmup_samples=10000, buffer_size=25000, batc
 ddpg.train()
 ddpg.actor_target.eval()
 
-episodes = 500
+episodes = 100
 rew = []
 
 for step in range(episodes):
@@ -29,7 +29,9 @@ for step in range(episodes):
         action = ddpg.actor_target(state).detach().numpy()
         obs, reward, done, _ = env.step(action)
         total_reward += reward
-        env.render()
+
+        if step >= episodes - 10:
+            env.render()
 
 
     rew.append(total_reward)
