@@ -1,7 +1,6 @@
 import copy
 import torch
 from torch import nn
-import numpy as np
 
 from ActorNetwork import ActorNetwork
 from CriticNetwork import CriticNetwork
@@ -14,7 +13,7 @@ class DDPG:
     
     def __init__(self, env, buffer_size=10000, batch_size=64,
                  gamma=.99, tau=1e-2, episodes=50, warmup_samples=1000,
-                 transform= lambda x : x, actor_lr=1e-3, critic_lr=1e-3,
+                 transform=lambda x: x, actor_lr=1e-3, critic_lr=1e-3,
                  actor_hidden_layers=[10, 10, 10], critic_hidden_layers=[10, 10, 10]):
         self.env = env
         self.env_low = self.env.action_space.low
@@ -32,6 +31,7 @@ class DDPG:
         self.critic_optim = torch.optim.Adam(self.critic_network.parameters(), lr=critic_lr)
 
         self.loss = nn.MSELoss()
+        self.noise_decay = 0.9
         
         self.replayBuffer = ReplayBuffer(buffer_size)
         self.batch_size = batch_size
@@ -55,7 +55,7 @@ class DDPG:
         self.actor_network.train()
         return action
 
-    def softUpdate(self, source, target):
+    def soft_update(self, source, target):
         for target_w, source_w  in zip(target.parameters(), source.parameters()):
             target_w.data.copy_(
                 (1.0 - self.tau) * target_w.data \
@@ -94,7 +94,7 @@ class DDPG:
 
         # calculate policy/actor loss
         actor_loss = self.critic_network(s_batch, self.actor_network(s_batch))
-        actor_loss = actor_loss.mean() # it makes difference if you do gradient ascent or descent for your problem, you idiot
+        actor_loss = - actor_loss.mean() # it makes difference if you do gradient ascent or descent for your problem, you idiot
 
         # calculate value/critic loss
         next_action = self.actor_target(s_2_batch)
@@ -112,21 +112,26 @@ class DDPG:
         step = 0
         while step < self.episodes:
 
-            state = self.transformObservation(self.env.reset())
+            state = self.transformObservation(self.env.reset()[0])
             done = False
             print(step, "/", self.episodes, "|", total_reward, "|", self.replayBuffer.count, "/", self.replayBuffer.buffer_size)
             total_reward = 0
+
             while not done:
+
                 action = self.action_selection(torch.squeeze(torch.tensor(state, dtype=torch.float32)))
-                action = self.noise_torch.sample((self.action_dim,)) + action
+
+                action = self.noise_torch.sample((self.action_dim,)) *self.noise_decay**step + action
+
                 action = torch.clamp(action, min=self.env_low[0].item(), max=self.env_high[0].item())
 
                 action = action.detach().numpy()
                 next_state, reward, done, _ = self.env.step(action)
+
                 next_state = self.transformObservation(next_state)
 
                 total_reward += reward
-
+                action = [action.item()]
                 self.replayBuffer.add(state, action, reward, next_state, done)
                 state = next_state
                 if self.replayBuffer.count >= self.n_batches:
@@ -136,8 +141,8 @@ class DDPG:
                     self.update_actor(actor_loss)
                     self.update_critic(critic_loss)
 
-                    self.softUpdate(self.actor_network, self.actor_target)
-                    self.softUpdate(self.critic_network, self.critic_target)
+                    self.soft_update(self.actor_network, self.actor_target)
+                    self.soft_update(self.critic_network, self.critic_target)
 
             if self.replayBuffer.count >= self.n_batches:
                 print("critic loss: ", critic_loss)

@@ -4,6 +4,7 @@ import torch
 
 from util import create_tens
 
+
 class ClampTanh(nn.Module):
     """
     ClampTanh is a customizable tanh activation function.
@@ -19,6 +20,7 @@ class ClampTanh(nn.Module):
 
     def forward(self, x):
         return self.tanh(x) * self.range + self.center
+
 
 class ActorNetwork(nn.Module):
     
