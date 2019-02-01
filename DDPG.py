@@ -1,6 +1,7 @@
 import copy
 import torch
 from torch import nn
+import matplotlib.pyplot as plt
 
 from ActorNetwork import ActorNetwork
 from CriticNetwork import CriticNetwork
@@ -12,8 +13,8 @@ import datetime
 class DDPG:
     
     def __init__(self, env, buffer_size=10000, batch_size=64,
-                 gamma=.99, tau=1e-2, episodes=50, warmup_samples=1000,
-                 transform=lambda x: x, actor_lr=1e-3, critic_lr=1e-3,
+                 gamma=.99, tau=1e-2, episodes=50, warmup_samples=1000, noise_decay=0.9,
+                 transform=lambda x: x, actor_lr=1e-3, critic_lr=1e-3, trial_horizon=1000,
                  actor_hidden_layers=[10, 10, 10], critic_hidden_layers=[10, 10, 10]):
         self.env = env
         self.env_low = self.env.action_space.low
@@ -21,6 +22,13 @@ class DDPG:
         print(self.env_low, self.env_high)
         self.state_dim = self.env.observation_space.shape[0]
         self.action_dim = self.env.action_space.shape[0]
+        self.started = datetime.datetime.now()
+        self.buffer_size = buffer_size
+        self.actor_lr = actor_lr
+        self.critic_lr = critic_lr
+        self.actor_hidden_layers = actor_hidden_layers
+        self.critic_hidden_layers = critic_hidden_layers
+        self.warmup_samples = warmup_samples
 
         self.actor_network = ActorNetwork([self.state_dim, *actor_hidden_layers, self.action_dim], torch.tensor(self.env_low), torch.tensor(self.env_high))
         self.critic_network = CriticNetwork([self.state_dim + self.action_dim, *critic_hidden_layers, 1])
@@ -31,7 +39,8 @@ class DDPG:
         self.critic_optim = torch.optim.Adam(self.critic_network.parameters(), lr=critic_lr)
 
         self.loss = nn.MSELoss()
-        self.noise_decay = 0.9
+        self.noise_decay = noise_decay
+        self.trial_horizon = trial_horizon
         
         self.replayBuffer = ReplayBuffer(buffer_size)
         self.batch_size = batch_size
@@ -77,7 +86,7 @@ class DDPG:
         self.critic_optim.step()
 
     def trial(self):
-        episodes = 10
+        episodes = 2
         for step in range(episodes):
             done = False
             obs = self.env.reset()[0]
@@ -95,13 +104,13 @@ class DDPG:
             print(total_reward)
 
     def save_model(self, env_name, actor_path=None, critic_path=None):
-        if not os.path.exists('models/'):
-            os.makedirs('models/')
-        suffix = datetime.datetime.now()
+        suffix = self.started
+        if not os.path.exists('models/{}'.format(suffix)):
+            os.makedirs('models/{}'.format(suffix))
         if actor_path is None:
-            actor_path = "models/ddpg_actor_{}_{}".format(env_name, suffix)
+            actor_path = "models/{}/ddpg_actor_{}".format(suffix, env_name)
         if critic_path is None:
-            critic_path = "models/ddpg_critic_{}_{}".format(env_name, suffix)
+            critic_path = "models/{}/ddpg_critic_{}".format(suffix, env_name)
         print('Saving models to {} and {}'.format(actor_path, critic_path))
         torch.save(self.actor_network.state_dict(), actor_path)
         torch.save(self.critic_network.state_dict(), critic_path)
@@ -127,19 +136,20 @@ class DDPG:
     def train(self):
         print("Training started...")
         total_reward = 0
-        step = 0
-        while step < self.episodes:
+        episode = 0
+        rew = []
+        while episode < self.episodes:
 
             state = self.transformObservation(self.env.reset()[0])
             done = False
-            print(step, "/", self.episodes, "|", total_reward, "|", self.replayBuffer.count, "/", self.replayBuffer.buffer_size)
+            print(episode, "/", self.episodes, "|", total_reward, "|", self.replayBuffer.count, "/", self.replayBuffer.buffer_size)
             total_reward = 0
-
+            step = 0
             while not done:
 
                 action = self.action_selection(torch.squeeze(torch.tensor(state, dtype=torch.float32)))
 
-                action = self.noise_torch.sample((self.action_dim,)) *self.noise_decay**step + action
+                action = self.noise_torch.sample((self.action_dim,)) *self.noise_decay**episode + action
 
                 action = torch.clamp(action, min=self.env_low[0].item(), max=self.env_high[0].item())
 
@@ -162,9 +172,18 @@ class DDPG:
                     self.soft_update(self.actor_network, self.actor_target)
                     self.soft_update(self.critic_network, self.critic_target)
 
+                step += 1
+
             if self.replayBuffer.count >= self.n_batches:
                 print("critic loss: ", critic_loss)
                 print("actor_loss: ", actor_loss)
-                step += 1
+                episode += 1
                 if total_reward > 1000:
                     self.trial()
+                rew.append(total_reward)
+
+        plt.plot(range(self.episodes), rew)
+        if not os.path.exists('models/{}'.format(self.started)):
+            os.makedirs('models/{}'.format(self.started))
+        plt.savefig('models/{}/buffer_size={}_batch_size={}_gamma={}_tau={}_episodes={}_warmup_samples={}_\
+        noise_decay={}_actor_lr={}_critic_lr={}_actor_hidden_layers={}_critic_hidden_layers={}.jpg'.format(self.started, self.buffer_size, self.batch_size, self.gamma, self.tau, self.episodes, self.warmup_samples, self.noise_decay, self.actor_lr, self.critic_lr, self.actor_hidden_layers, self.critic_hidden_layers))
