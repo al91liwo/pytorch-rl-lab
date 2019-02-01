@@ -7,7 +7,7 @@ from DDPG import DDPG
 env_name = "CartpoleStabShort-v0"
 env = gym.make(env_name)
 
-ddpg = DDPG(env=env, episodes=100, warmup_samples=10000, buffer_size=25000, batch_size=32,
+ddpg = DDPG(env=env, episodes=100, warmup_samples=10000, buffer_size=25000, batch_size=64,
             actor_lr=1e-3, critic_lr=1e-3,
             actor_hidden_layers=[200, 100, 100], critic_hidden_layers=[200, 100, 100])
 

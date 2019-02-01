@@ -76,6 +76,24 @@ class DDPG:
         loss.backward(retain_graph=True)
         self.critic_optim.step()
 
+    def trial(self):
+        episodes = 10
+        for step in range(episodes):
+            done = False
+            obs = self.env.reset()[0]
+            total_reward = 0
+            print(step)
+            while not done:
+                obs = self.transformObservation(obs)
+                state = torch.tensor(obs, dtype=torch.float32)
+
+                action = self.actor_target(state).detach().numpy()
+                obs, reward, done, _ = self.env.step(action)
+                total_reward += reward
+
+                self.env.render()
+            print(total_reward)
+
     def save_model(self, env_name, actor_path=None, critic_path=None):
         if not os.path.exists('models/'):
             os.makedirs('models/')
@@ -148,3 +166,5 @@ class DDPG:
                 print("critic loss: ", critic_loss)
                 print("actor_loss: ", actor_loss)
                 step += 1
+                if total_reward > 1000:
+                    self.trial()
