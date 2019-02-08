@@ -10,7 +10,7 @@ class ReplayBuffer:
     """
     
     
-    def __init__(self, buffer_size):
+    def __init__(self, buffer_size, device):
         """
         Creates a ReplayBuffer of size buffer_size
         param buffer_size: size of buffer as integer
@@ -19,7 +19,7 @@ class ReplayBuffer:
         self.count = 0
         # list-like container with fast appends and pops on either end
         self.buffer = deque() 
-
+        self.device = device
     
     def __str__(self):
         return str(self.buffer_size)
@@ -56,11 +56,11 @@ class ReplayBuffer:
             batch_size = self.count
 
         batch = random.sample(self.buffer, batch_size)
-        s_batch = torch.tensor([b[0] for b in batch], dtype=torch.float32)
-        a_batch = torch.tensor([b[1] for b in batch], dtype=torch.float32)
-        r_batch = torch.tensor([b[2] for b in batch], dtype=torch.float32).unsqueeze(1)
-        s_2_batch = torch.tensor([b[3] for b in batch], dtype=torch.float32)
-        done_batch = torch.tensor([b[4] for b in batch], dtype=torch.float32).unsqueeze(1)
+        s_batch = torch.tensor([b[0] for b in batch], dtype=torch.float32, device=self.device)
+        a_batch = torch.tensor([b[1] for b in batch], dtype=torch.float32, device=self.device)
+        r_batch = torch.tensor([b[2] for b in batch], dtype=torch.float32, device=self.device).unsqueeze(1)
+        s_2_batch = torch.tensor([b[3] for b in batch], dtype=torch.float32, device=self.device)
+        done_batch = torch.tensor([b[4] for b in batch], dtype=torch.float32, device=self.device).unsqueeze(1)
 
         return (s_batch, a_batch, r_batch, s_2_batch, done_batch)
 
