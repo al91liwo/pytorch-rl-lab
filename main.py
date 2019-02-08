@@ -14,8 +14,8 @@ dev = "cuda" if torch.cuda.is_available() else "cpu"
 
 
 while True:
-    ddpg = DDPG(env=env, episodes=200, warmup_samples=10000, buffer_size=50000, batch_size=50,
-            actor_lr=1e-3, critic_lr=1e-2, actor_lr_decay=0.99, critic_lr_decay=0.99, noise_decay=0.95, epochs=1, batch_size_scheduler=1,
+    ddpg = DDPG(env=env, episodes=150, warmup_samples=10000, buffer_size=50000, batch_size=50,
+            actor_lr=1e-3, critic_lr=1e-2, actor_lr_decay=0.98, critic_lr_decay=0.98, noise_decay=0.95, epochs=1, batch_size_scheduler=1,
             actor_hidden_layers=[100, 200, 100], critic_hidden_layers=[100, 200, 100], device=dev)
     #ddpg = DDPG(env=env, episodes=150, warmup_samples=rnd.randint(10000,50000), buffer_size=50000+10000*rnd.randint(0,5), batch_size=32*rnd.randint(1,4),
     #        actor_lr=np.abs(rnd.normal(3e-4, 1e-4)), critic_lr=np.abs(rnd.normal(6e-4, 1e-4)), noise_decay=0.9+rnd.uniform(0.05,0.099), epochs=rnd.randint(1,3),
