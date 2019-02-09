@@ -18,14 +18,14 @@ batch_size_schedulers = [
 
 class DDPG:
     
-    def __init__(self, env, buffer_size=10000, batch_size=64, epochs=1,
+    def __init__(self, env, action_space_limits, buffer_size=10000, batch_size=64, epochs=1,
                  gamma=.99, tau=1e-2, episodes=50, warmup_samples=1000, noise_decay=0.9,
                  transform=lambda x: x, actor_lr=1e-3, critic_lr=1e-3, actor_lr_decay=1., critic_lr_decay=1., trial_horizon=1000,
                  actor_hidden_layers=[10, 10, 10], critic_hidden_layers=[10, 10, 10], batch_size_scheduler=0, device="cpu"):
         self.device = device
         self.env = env
-        self.env_low = torch.tensor(self.env.action_space.low, device=self.device)
-        self.env_high = torch.tensor(self.env.action_space.high, device=self.device)
+        self.env_low = torch.tensor(action_space_limits[0], device=self.device)
+        self.env_high = torch.tensor(action_space_limits[1], device=self.device)
         print(self.env_low, self.env_high)
         self.state_dim = self.env.observation_space.shape[0]
         self.action_dim = self.env.action_space.shape[0]
@@ -106,7 +106,7 @@ class DDPG:
             episodes = 2
             for step in range(episodes):
                 done = False
-                obs = self.env.reset()[0]
+                obs = self.env.reset()
                 total_reward = 0
                 print(step)
                 while not done:
@@ -117,7 +117,7 @@ class DDPG:
                     obs, reward, done, _ = self.env.step(action)
                     total_reward += reward
 
-#                    self.env.render()
+                    self.env.render()
                 print(total_reward)
 
     def save_model(self, dirname, env_name, actor_path=None, critic_path=None):
@@ -165,7 +165,7 @@ class DDPG:
         episode = 0
         rew = []
         while episode < self.episodes:
-            state = self.transformObservation(self.env.reset()[0])
+            state = self.transformObservation(self.env.reset())
             done = False
             print(episode, "/", self.episodes, "|", total_reward, "|", self.replayBuffer.count, "/", self.replayBuffer.buffer_size, "| clr:alr", self.critic_lr_scheduler.get_lr(), ":", self.actor_lr_scheduler.get_lr())
             total_reward = 0
@@ -205,10 +205,10 @@ class DDPG:
                 self.critic_lr_scheduler.step()
                 self.actor_lr_scheduler.step()
                 episode += 1
-                if total_reward > 1000 and reward_record < total_reward:
+                if total_reward > 200 and reward_record < total_reward:
                     reward_record = total_reward
                     self.save_model(self.dirname, "cartpolestab")
-#                    self.trial()
+                    self.trial()
                 rew.append(total_reward)
 
         plt.xlabel("episode")
@@ -222,7 +222,6 @@ class DDPG:
             os.makedirs(dirname)
         self.dirname = dirname
         plt.savefig(dirname+'/rewardplot.jpg')
-        plt.clf()
         with open(dirname+'/parameters', 'w+') as f:
             f.write('buffer_size={}\tbatch_size={}\tbatch_scheduler={}\tgamma={:.4f}\ttau={:.4f}\tepisodes={}\twarmup_samples={}\tnoise_decay={:.4f}\tactor_lr={:.8f}\tcritic_lr={:.8f}\tactor_lr_decay={:.4f}\tcritic_lr_decay={:.4f}\tactor_hidden_layers={}\tcritic_hidden_layers={}\tepochs={}'.format(self.buffer_size, self.batch_size, self.batch_scheduler, self.gamma, self.tau, self.episodes, self.warmup_samples, self.noise_decay, self.actor_lr, self.critic_lr, self.actor_lr_decay, self.critic_lr_decay, self.actor_hidden_layers, self.critic_hidden_layers, self.epochs))
         return self.dirname
