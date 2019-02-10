@@ -19,8 +19,8 @@ batch_size_schedulers = [
 class DDPG:
     
     def __init__(self, env, action_space_limits, buffer_size=10000, batch_size=64, epochs=1,
-                 gamma=.99, tau=1e-2, episodes=50, warmup_samples=1000, noise_decay=0.9,
-                 transform=lambda x: x, actor_lr=1e-3, critic_lr=1e-3, actor_lr_decay=1., critic_lr_decay=1., trial_horizon=1000,
+                 gamma=.99, tau=1e-2, steps=100000, warmup_samples=1000, noise_decay=0.9,
+                 transform=lambda x: x, actor_lr=1e-3, critic_lr=1e-3, actor_lr_decay=1., critic_lr_decay=1., trial_horizon=5000,
                  actor_hidden_layers=[10, 10, 10], critic_hidden_layers=[10, 10, 10], batch_size_scheduler=0, device="cpu"):
         self.device = device
         self.env = env
@@ -61,7 +61,7 @@ class DDPG:
         self.gamma = torch.tensor(gamma, device=self.device)
 
         self.tau = torch.tensor(tau, device=self.device)
-        self.episodes = episodes
+        self.total_steps = steps
         self.noise_torch = torch.distributions.normal.Normal(0, self.env_high[0])
         self.transformObservation = transform
 
@@ -102,23 +102,32 @@ class DDPG:
         self.critic_optim.step()
 
     def trial(self):
+        """
+        Test the target actor in the environment
+        return: average total reward
+        """
+        print("trial average total reward:")
         with torch.no_grad():
-            episodes = 2
-            for step in range(episodes):
+            episodes = 5
+            average_reward = 0
+            for episode in range(episodes):
                 done = False
                 obs = self.env.reset()
                 total_reward = 0
-                print(step)
-                while not done:
+                for t in range(self.trial_horizon):
                     obs = self.transformObservation(obs)
                     state = torch.tensor(obs, dtype=torch.float32).to(self.device)
 
                     action = self.actor_target(state).cpu().detach().numpy()
                     obs, reward, done, _ = self.env.step(action)
                     total_reward += reward
-
-                    self.env.render()
-                print(total_reward)
+                    if done:
+                        break
+                    #self.env.render()
+                # calculate average reward with incremental average
+                average_reward += total_reward/episodes
+        print(average_reward)
+        return average_reward
 
     def save_model(self, dirname, env_name, actor_path=None, critic_path=None):
         if not os.path.exists(dirname):
@@ -130,15 +139,17 @@ class DDPG:
         print('Saving models to {} and {}'.format(actor_path, critic_path))
         torch.save(self.actor_target.state_dict(), actor_path)
         torch.save(self.critic_target.state_dict(), critic_path)
+        torch.save(self.critic_optim.state_dict(), critic_path+"_optim")
+        torch.save(self.actor_optim.state_dict(), actor_path+"_optim")
 
     def load_model(self):
        if not os.path.exists(os.path.join(self.dirname, "ddpg_critic_cartpolestab")):
            print("no model checkoutpoint found")
            return
-       self.critic_target = torch.load(os.path.join(self.dirname, "ddpg_critic_cartpolestab"))
-       self.critic_target = torch.load(os.path.join(self.dirname, "ddpg_critic_cartpolestab"))
-       self.actor_network = torch.load(os.path.join(self.dirname, "ddpg_actor_cartpolestab"))
-       self.actor_network = torch.load(os.path.join(self.dirname, "ddpg_actor_cartpolestab"))
+       self.critic_target.load_state_dict(torch.load(os.path.join(self.dirname, "ddpg_critic_cartpolestab")))
+       self.critic_target.load_state_dict(torch.load(os.path.join(self.dirname, "ddpg_critic_cartpolestab")))
+       self.actor_network.load_state_dict(torch.load(os.path.join(self.dirname, "ddpg_actor_cartpolestab")))
+       self.actor_network.load_state_dict(torch.load(os.path.join(self.dirname, "ddpg_actor_cartpolestab")))
 
     def update(self, e):
         sample_batch = self.replayBuffer.sample_batch(batch_size_schedulers[self.batch_scheduler](self.batch_size, e))
@@ -164,12 +175,14 @@ class DDPG:
         total_reward = 0
         episode = 0
         rew = []
-        while episode < self.episodes:
+        step = 0
+        while step < self.total_steps:
             state = self.transformObservation(self.env.reset())
             done = False
-            print(episode, "/", self.episodes, "|", total_reward, "|", self.replayBuffer.count, "/", self.replayBuffer.buffer_size, "| clr:alr", self.critic_lr_scheduler.get_lr(), ":", self.actor_lr_scheduler.get_lr())
+            bs = batch_size_schedulers[self.batch_scheduler](self.batch_size, episode)
+            statusprint = "{} /{} | {:.0f} /{:.0f} | {} /{} | alr,clr: {:.2E} {:.2E} | bs: {}"
+            print(statusprint.format(step, self.total_steps, total_reward, reward_record, self.replayBuffer.count, self.replayBuffer.buffer_size, self.critic_lr_scheduler.get_lr()[0], self.actor_lr_scheduler.get_lr()[0], batch_size_schedulers[self.batch_scheduler](self.batch_size,episode)))
             total_reward = 0
-            step = 0
             while not done:
 
                 action = self.action_selection(torch.squeeze(torch.tensor(state, dtype=torch.float32, device=self.device)))
@@ -205,23 +218,26 @@ class DDPG:
                 self.critic_lr_scheduler.step()
                 self.actor_lr_scheduler.step()
                 episode += 1
+                # if out actor is really good, test target actor. If the target actor is good too, save it.
                 if total_reward > 200 and reward_record < total_reward:
-                    reward_record = total_reward
-                    self.save_model(self.dirname, "cartpolestab")
-                    self.trial()
+                    trial_average_reward = self.trial()
+                    if trial_average_reward > reward_record:
+                        print("New record")
+                        reward_record = trial_average_reward
+                        self.save_model(self.dirname, "cartpolestab")
                 rew.append(total_reward)
 
         plt.xlabel("episode")
         plt.ylabel("reward")
-        plt.plot(range(self.episodes), rew)
+        plt.plot(episode), rew)
         print(reward_record)
-        dirname = 'average-reward_{}'.format(reward_record)
+        dirname = 'models/record-reward_{}'.format(reward_record)
         if os.path.exists(self.dirname):
             os.rename(self.dirname, dirname)
         if not os.path.exists(dirname):
             os.makedirs(dirname)
         self.dirname = dirname
-        plt.savefig(dirname+'/rewardplot.jpg')
+        plt.savefig(dirname+'/rewardplot.png')
         with open(dirname+'/parameters', 'w+') as f:
             f.write('buffer_size={}\tbatch_size={}\tbatch_scheduler={}\tgamma={:.4f}\ttau={:.4f}\tepisodes={}\twarmup_samples={}\tnoise_decay={:.4f}\tactor_lr={:.8f}\tcritic_lr={:.8f}\tactor_lr_decay={:.4f}\tcritic_lr_decay={:.4f}\tactor_hidden_layers={}\tcritic_hidden_layers={}\tepochs={}'.format(self.buffer_size, self.batch_size, self.batch_scheduler, self.gamma, self.tau, self.episodes, self.warmup_samples, self.noise_decay, self.actor_lr, self.critic_lr, self.actor_lr_decay, self.critic_lr_decay, self.actor_hidden_layers, self.critic_hidden_layers, self.epochs))
         return self.dirname
