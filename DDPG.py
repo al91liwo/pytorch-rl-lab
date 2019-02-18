@@ -18,7 +18,7 @@ batch_size_schedulers = [
 
 class DDPG:
     
-    def __init__(self, env, action_space_limits, buffer_size=10000, batch_size=64, epochs=1,
+    def __init__(self, env, dirname, action_space_limits, buffer_size=10000, batch_size=64, epochs=1,
                  gamma=.99, tau=1e-2, steps=100000, warmup_samples=1000, noise_decay=0.9,
                  transform=lambda x: x, actor_lr=1e-3, critic_lr=1e-3, actor_lr_decay=1., critic_lr_decay=1., trial_horizon=5000,
                  actor_hidden_layers=[10, 10, 10], critic_hidden_layers=[10, 10, 10], batch_size_scheduler=0, device="cpu"):
@@ -30,7 +30,7 @@ class DDPG:
         self.state_dim = self.env.observation_space.shape[0]
         self.action_dim = self.env.action_space.shape[0]
         self.started = datetime.datetime.now()
-        self.dirname = 'models/{}'.format(self.started)
+        self.dirname = dirname
         self.buffer_size = buffer_size
         self.actor_lr = actor_lr
         self.critic_lr = critic_lr
@@ -229,9 +229,9 @@ class DDPG:
 
         plt.xlabel("episode")
         plt.ylabel("reward")
-        plt.plot(episode), rew)
+        plt.plot(episode, rew)
         print(reward_record)
-        dirname = 'models/record-reward_{}'.format(reward_record)
+        dirname = self.dirname+'record-reward_{}'.format(reward_record)
         if os.path.exists(self.dirname):
             os.rename(self.dirname, dirname)
         if not os.path.exists(dirname):

@@ -7,17 +7,38 @@ from DDPG import batch_size_schedulers
 import numpy as np
 import numpy.random as rnd
 from argparse import ArgumentParser
+import csv
 
-env_name = "CartpoleStabShort-v0"
-env = gym.make(env_name)
 
-dev = "cuda" if torch.cuda.is_available() else "cpu"
+def parse_config(configfile):
+	run_configs = []
+	with open(configfile, 'r') as csvfile:
+		reader = csv.DictReader(csvfile, delimiter=';')
+		for row in reader:
+			run_configs.append(row)
+	return run_configs
 
-def main():
 
-	ddpg = DDPG(env=env, steps=500000, warmup_samples=20000, buffer_size=100000, batch_size=256,
-			actor_lr=1e-3, critic_lr=1e-2, actor_lr_decay=.995, critic_lr_decay=.995, noise_decay=0.99, epochs=1, batch_size_scheduler=0, action_space_limits=([-5.], [5.]),
-			actor_hidden_layers=[100, 100, 50], critic_hidden_layers=[100, 100], device=dev)
+def train_and_evaluate(env, outdir, config):
+	dev = "cuda" if torch.cuda.is_available() else "cpu"
+
+	steps = config["steps"]
+	warmup_samples = config["warmup_samples"]
+	buffer_size = config["buffer_size"]
+	batch_size = config["batch_size"]
+	actor_lr = config["actor_lr"]
+	critic_lr = config["critic_lr"]
+	noise_decay = config["noise_decay"]
+	tau = config["tau"]
+	actor_hidden_layers = list(map(int, config["actor_hidden_layers"].split(',')))
+	critic_hidden_layers= list(map(int, config["critic_hidden_layers"].split(',')))
+
+	#you need to test this
+	print(steps, warmup_samples, buffer_size, batch_size, actor_lr, critic_lr, noise_decay, tau, actor_hidden_layers, critic_hidden_layers)
+
+	ddpg = DDPG(env=env, steps=steps, warmup_samples=warmup_samples, buffer_size=buffer_size, batch_size=batch_size,
+			actor_lr=actor_lr, critic_lr=critic_lr, noise_decay=noise_decay, action_space_limits=([-5.], [5.]), tau=tau,
+			actor_hidden_layers=actor_hidden_layers, critic_hidden_layers=critic_hidden_layers, dirname=outdir, device=dev)
 
 	result_dirname = ddpg.train()
 	ddpg.actor_target.eval()
@@ -47,7 +68,7 @@ def main():
 
 
 	print(sum(rew)/len(rew))
-	ddpg.save_model(result_dirname, env_name)
+	ddpg.save_model(result_dirname, config["env"])
 	plt.xlabel("episodes")
 	plt.ylabel("reward")
 	plt.plot(range(episodes), rew)
@@ -56,5 +77,24 @@ def main():
 
 parser = ArgumentParser("DDPG")
 
-while True:
-    main()
+def main():
+
+	parser = ArgumentParser()
+	parser.add_argument('hyperparameters', type=str, help='.csv file containing rows for each hyperparameter set to test')
+	parser.add_argument('outdir', type=str, help='Directory that contains the results of the runs')
+
+	args = parser.parse_args()
+
+	run_configs = parse_config(args.hyperparameters)
+
+
+	for config in run_configs:
+
+		env = gym.make(config['env'])
+
+
+		train_and_evaluate(env, args.outdir, config)
+
+		env.close()
+
+main()
