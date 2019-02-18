@@ -1,59 +1,72 @@
 import copy
 import torch
 from torch import nn
+import matplotlib.pyplot as plt
 import numpy as np
-import gc
-import time
-import pandas as pd
 
 from ActorNetwork import ActorNetwork
 from CriticNetwork import CriticNetwork
 from ReplayBuffer import ReplayBuffer
+import os
+import datetime
 
-gc.enable()
+
+batch_size_schedulers = [
+    lambda bs, e: bs,
+    lambda bs, e: bs + e
+]
 
 class DDPG:
     
-    def __init__(self, env, buffer_size=10000, batch_size=64,
-                 epsilon=.99, tau=1e-2, episodes=50, warmup_samples=5000, min_samples_during_trial=1, min_batches=20,
-                 transform= lambda x : x, actor_lr=1e-4, critic_lr=1e-3, noise_decay=.99, trial_horizon=1000, warmup_noise=1.,
-                 noise_init=1., actor_hidden_layers=[100, 200, 300, 300], critic_hidden_layers=[100, 200, 300, 300]):
+    def __init__(self, env, action_space_limits, buffer_size=10000, batch_size=64, epochs=1,
+                 gamma=.99, tau=1e-2, steps=100000, warmup_samples=1000, noise_decay=0.9,
+                 transform=lambda x: x, actor_lr=1e-3, critic_lr=1e-3, actor_lr_decay=1., critic_lr_decay=1., trial_horizon=5000,
+                 actor_hidden_layers=[10, 10, 10], critic_hidden_layers=[10, 10, 10], batch_size_scheduler=0, device="cpu"):
+        self.device = device
         self.env = env
+        self.env_low = torch.tensor(action_space_limits[0], device=self.device)
+        self.env_high = torch.tensor(action_space_limits[1], device=self.device)
+        print(self.env_low, self.env_high)
         self.state_dim = self.env.observation_space.shape[0]
         self.action_dim = self.env.action_space.shape[0]
-
-        self.min_batches = min_batches
-        actor_param = [self.state_dim, *actor_hidden_layers, self.action_dim]
-        critic_param = [self.state_dim + self.action_dim, *critic_hidden_layers, 1]
-        self.actor_network = ActorNetwork(actor_param)
-        self.critic_network = CriticNetwork(critic_param)
-        self.actor_target = ActorNetwork(actor_param)
-        self.critic_target = CriticNetwork(critic_param)
-        
-        self.actor_optim = torch.optim.Adam(self.actor_network.parameters(), lr=actor_lr, weight_decay=1e-8)
-        self.critic_optim = torch.optim.Adam(self.critic_network.parameters(), lr=critic_lr, weight_decay=1e-8)
-
-        self.loss = nn.MSELoss()
-        
-        self.replayBuffer = ReplayBuffer(buffer_size)
-        self.batch_size = batch_size
+        self.started = datetime.datetime.now()
+        self.dirname = 'models/{}'.format(self.started)
+        self.buffer_size = buffer_size
+        self.actor_lr = actor_lr
+        self.critic_lr = critic_lr
+        self.actor_lr_decay = actor_lr_decay
+        self.critic_lr_decay = critic_lr_decay
+        self.actor_hidden_layers = actor_hidden_layers
+        self.critic_hidden_layers = critic_hidden_layers
         self.warmup_samples = warmup_samples
+        self.epochs = epochs
 
-        self.epsilon = epsilon
-
-        self.tau = tau
-        self.episodes = episodes
-
-        self.warmup_noise = torch.distributions.normal.Normal(0, self.env.action_space.high[0]*warmup_noise)
-        self.train_noise = torch.distributions.normal.Normal(0, self.env.action_space.high[0]*noise_init)
-        self.noise = self.warmup_noise
-        self.noise_init = noise_init
-        self.noise_decay = noise_decay
-        self.min_samples_during_trial = min_samples_during_trial
+        self.actor_network = ActorNetwork([self.state_dim, *actor_hidden_layers, self.action_dim], torch.tensor(self.env_low, device=self.device), torch.tensor(self.env_high, device=self.device)).to(self.device)
+        self.critic_network = CriticNetwork([self.state_dim + self.action_dim, *critic_hidden_layers, 1]).to(self.device)
+        self.actor_target = copy.deepcopy(self.actor_network).to(self.device)
+        self.critic_target = copy.deepcopy(self.critic_network).to(self.device)
+        
+        self.actor_optim = torch.optim.Adam(self.actor_network.parameters(), lr=actor_lr)
+        self.critic_optim = torch.optim.Adam(self.critic_network.parameters(), lr=critic_lr)
+        self.actor_lr_scheduler = torch.optim.lr_scheduler.ExponentialLR(self.actor_optim, actor_lr_decay)
+        self.critic_lr_scheduler = torch.optim.lr_scheduler.ExponentialLR(self.critic_optim, critic_lr_decay)
+        self.loss = nn.MSELoss()
+        self.noise_decay = torch.tensor(noise_decay, device=self.device)
         self.trial_horizon = trial_horizon
+        
+        self.replayBuffer = ReplayBuffer(buffer_size, self.device)
+        self.batch_size = batch_size
+        self.n_batches = warmup_samples
 
+        self.gamma = torch.tensor(gamma, device=self.device)
+
+        self.tau = torch.tensor(tau, device=self.device)
+        self.total_steps = steps
+        self.noise_torch = torch.distributions.normal.Normal(0, self.env_high[0])
         self.transformObservation = transform
-        self.warmup_complete = False
+
+        self.batch_scheduler = batch_size_scheduler
+
 
     def action_selection(self, state):
         """
@@ -61,12 +74,13 @@ class DDPG:
         param state: current state
         return: action with highest reward
         """
-        self.actor_target.eval()
-        action = self.actor_target(state.type(torch.float32))
-        self.actor_target.train()
-        return action
+        with torch.no_grad():
+            self.actor_network.eval()
+            action = self.actor_network(state)
+            self.actor_network.train()
+            return action
 
-    def softUpdate(self, source, target):
+    def soft_update(self, source, target):
         for target_w, source_w  in zip(target.parameters(), source.parameters()):
             target_w.data.copy_(
                 (1.0 - self.tau) * target_w.data \
@@ -76,84 +90,154 @@ class DDPG:
     def update_actor(self, loss):
         # update actor
         self.actor_optim.zero_grad()
-        loss.backward(retain_graph=False)
+        # print("actor_loss: ", actor_loss)
+        loss.backward()
         self.actor_optim.step()
 
     def update_critic(self, loss):
         # update critic
         self.critic_optim.zero_grad()
-        loss.backward(retain_graph=False)
+        # print("critic loss: ", critic_loss)
+        loss.backward(retain_graph=True)
         self.critic_optim.step()
 
-    def update(self):
-        sample_batch = self.replayBuffer.sample_batch(self.batch_size)
-        s_batch, a_batch, r_batch, s_2_batch = sample_batch
+    def trial(self):
+        """
+        Test the target actor in the environment
+        return: average total reward
+        """
+        print("trial average total reward:")
+        with torch.no_grad():
+            episodes = 5
+            average_reward = 0
+            for episode in range(episodes):
+                done = False
+                obs = self.env.reset()
+                total_reward = 0
+                for t in range(self.trial_horizon):
+                    obs = self.transformObservation(obs)
+                    state = torch.tensor(obs, dtype=torch.float32).to(self.device)
+
+                    action = self.actor_target(state).cpu().detach().numpy()
+                    obs, reward, done, _ = self.env.step(action)
+                    total_reward += reward
+                    if done:
+                        break
+                    #self.env.render()
+                # calculate average reward with incremental average
+                average_reward += total_reward/episodes
+        print(average_reward)
+        return average_reward
+
+    def save_model(self, dirname, env_name, actor_path=None, critic_path=None):
+        if not os.path.exists(dirname):
+            os.makedirs(dirname)
+        if actor_path is None:
+            actor_path = "{}/ddpg_actor_{}".format(dirname, env_name)
+        if critic_path is None:
+            critic_path = "{}/ddpg_critic_{}".format(dirname, env_name)
+        print('Saving models to {} and {}'.format(actor_path, critic_path))
+        torch.save(self.actor_target.state_dict(), actor_path)
+        torch.save(self.critic_target.state_dict(), critic_path)
+        torch.save(self.critic_optim.state_dict(), critic_path+"_optim")
+        torch.save(self.actor_optim.state_dict(), actor_path+"_optim")
+
+    def load_model(self):
+       if not os.path.exists(os.path.join(self.dirname, "ddpg_critic_cartpolestab")):
+           print("no model checkoutpoint found")
+           return
+       self.critic_target.load_state_dict(torch.load(os.path.join(self.dirname, "ddpg_critic_cartpolestab")))
+       self.critic_target.load_state_dict(torch.load(os.path.join(self.dirname, "ddpg_critic_cartpolestab")))
+       self.actor_network.load_state_dict(torch.load(os.path.join(self.dirname, "ddpg_actor_cartpolestab")))
+       self.actor_network.load_state_dict(torch.load(os.path.join(self.dirname, "ddpg_actor_cartpolestab")))
+
+    def update(self, e):
+        sample_batch = self.replayBuffer.sample_batch(batch_size_schedulers[self.batch_scheduler](self.batch_size, e))
+        s_batch, a_batch, r_batch, s_2_batch, done_batch = sample_batch
+
+        # calculate policy/actor loss
+        actor_loss = self.critic_network(s_batch, self.actor_network(s_batch))
+        actor_loss = - actor_loss.mean() # it makes difference if you do gradient ascent or descent for your problem, you idiot
 
         # calculate value/critic loss
-        critic_target_prediction = self.critic_target(s_2_batch, self.actor_target(s_2_batch))
-        expected_critic = r_batch + self.epsilon * critic_target_prediction
+        next_action = self.actor_target(s_2_batch)
+        critic_target_prediction = self.critic_target(s_2_batch, next_action)
+        expected_critic = r_batch + self.gamma * (1. - done_batch) * critic_target_prediction
 
         critic_pred = self.critic_network(s_batch, a_batch)
         critic_loss = self.loss(critic_pred, expected_critic)
-        self.update_critic(critic_loss)
 
-        # calculate policy/actor loss
-        actor_loss = - self.critic_network(s_batch, self.actor_network(s_batch))
-        actor_loss = torch.mean(actor_loss)
-        self.update_actor(actor_loss)
-
-        return critic_loss, actor_loss
-
-    def trial(self, epoch):
-        total_reward = 0
-        obs = self.env.reset()
-        done = False
-        trial_len = 0
-        while not done and trial_len < self.trial_horizon:
-            state = self.transformObservation(obs)
-
-            action = self.action_selection(torch.squeeze(torch.tensor(state)))
-            action = self.noise.sample((self.action_dim,)) + action
-            action = action.detach().numpy()
-
-            obs, reward, done, _ = self.env.step(action)
-            next_state = self.transformObservation(obs)
-
-            total_reward += reward
-            trial_len += 1
-            if epoch % 10 == 0 and self.warmup_complete:
-                self.env.render()
-            # for continuity in replay buffer the next_state should should be a tensor
-            self.replayBuffer.add(state, action, reward, next_state)
-
-        return trial_len, total_reward
+        return actor_loss, critic_loss
 
     def train(self):
+        reward_record = 0
         print("Training started...")
-        i = 0
-        while i < self.episodes:
-            all_trial_len = 0
-            while all_trial_len < self.min_samples_during_trial:
-                trial_len, total_reward = self.trial(i)
-                all_trial_len += trial_len
+        total_reward = 0
+        episode = 0
+        rew = []
+        step = 0
+        while step < self.total_steps:
+            state = self.transformObservation(self.env.reset())
+            done = False
+            bs = batch_size_schedulers[self.batch_scheduler](self.batch_size, episode)
+            statusprint = "{} /{} | {:.0f} /{:.0f} | {} /{} | alr,clr: {:.2E} {:.2E} | bs: {}"
+            print(statusprint.format(step, self.total_steps, total_reward, reward_record, self.replayBuffer.count, self.replayBuffer.buffer_size, self.critic_lr_scheduler.get_lr()[0], self.actor_lr_scheduler.get_lr()[0], batch_size_schedulers[self.batch_scheduler](self.batch_size,episode)))
+            total_reward = 0
+            while not done:
 
-            print(i, "/", self.episodes, "|", trial_len, "|", total_reward)
-            if self.replayBuffer.count >= self.warmup_samples:
-                self.warmup_complete = True
-                self.noise = self.train_noise
-                i += 1
-                for _ in range(max(trial_len, self.min_batches)):
-                    critic_loss, actor_loss = self.update()
-                    self.softUpdate(self.critic_network, self.critic_target)
-                    self.softUpdate(self.actor_network, self.actor_target)
-                self.train_noise = torch.distributions.normal.Normal(0, self.env.action_space.high[0]*self.noise_init*self.noise_decay**i)
+                action = self.action_selection(torch.squeeze(torch.tensor(state, dtype=torch.float32, device=self.device)))
 
-                print("Crititc loss:", critic_loss)
-                print("Actor loss:", actor_loss)
-                print(self.replayBuffer.count)
-                gc.collect()
-                # all_objects = muppy.get_objects()
-                # sum = summary.summarize(all_objects)
-                # summary.print_(sum)
+                action = self.noise_torch.sample((self.action_dim,)) *self.noise_decay**episode + action
 
-                        
+                action = torch.clamp(action, min=self.env_low[0], max=self.env_high[0])
+
+                action = action.to("cpu").detach().numpy()
+                next_state, reward, done, _ = self.env.step(action)
+
+                next_state = self.transformObservation(next_state)
+
+                total_reward += reward
+                self.replayBuffer.add(state, action, reward, next_state, done)
+                state = next_state
+                if self.replayBuffer.count >= self.n_batches:
+
+                    for _ in range(self.epochs):
+                        actor_loss, critic_loss = self.update(episode)
+
+                        self.update_actor(actor_loss)
+                        self.update_critic(critic_loss)
+
+                        self.soft_update(self.actor_network, self.actor_target)
+                        self.soft_update(self.critic_network, self.critic_target)
+
+                step += 1
+
+            if self.replayBuffer.count >= self.n_batches:
+#                print("critic loss: ", critic_loss)
+#                print("actor_loss: ", actor_loss)
+                self.critic_lr_scheduler.step()
+                self.actor_lr_scheduler.step()
+                episode += 1
+                # if out actor is really good, test target actor. If the target actor is good too, save it.
+                if total_reward > 200 and reward_record < total_reward:
+                    trial_average_reward = self.trial()
+                    if trial_average_reward > reward_record:
+                        print("New record")
+                        reward_record = trial_average_reward
+                        self.save_model(self.dirname, "cartpolestab")
+                rew.append(total_reward)
+
+        plt.xlabel("episode")
+        plt.ylabel("reward")
+        plt.plot(episode), rew)
+        print(reward_record)
+        dirname = 'models/record-reward_{}'.format(reward_record)
+        if os.path.exists(self.dirname):
+            os.rename(self.dirname, dirname)
+        if not os.path.exists(dirname):
+            os.makedirs(dirname)
+        self.dirname = dirname
+        plt.savefig(dirname+'/rewardplot.png')
+        with open(dirname+'/parameters', 'w+') as f:
+            f.write('buffer_size={}\tbatch_size={}\tbatch_scheduler={}\tgamma={:.4f}\ttau={:.4f}\tepisodes={}\twarmup_samples={}\tnoise_decay={:.4f}\tactor_lr={:.8f}\tcritic_lr={:.8f}\tactor_lr_decay={:.4f}\tcritic_lr_decay={:.4f}\tactor_hidden_layers={}\tcritic_hidden_layers={}\tepochs={}'.format(self.buffer_size, self.batch_size, self.batch_scheduler, self.gamma, self.tau, self.episodes, self.warmup_samples, self.noise_decay, self.actor_lr, self.critic_lr, self.actor_lr_decay, self.critic_lr_decay, self.actor_hidden_layers, self.critic_hidden_layers, self.epochs))
+        return self.dirname
