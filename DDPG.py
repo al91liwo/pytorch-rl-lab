@@ -129,18 +129,13 @@ class DDPG:
         print(average_reward)
         return average_reward
 
-    def save_model(self, dirname, env_name, actor_path=None, critic_path=None):
-        if not os.path.exists(dirname):
-            os.makedirs(dirname)
-        if actor_path is None:
-            actor_path = "{}/ddpg_actor_{}".format(dirname, env_name)
-        if critic_path is None:
-            critic_path = "{}/ddpg_critic_{}".format(dirname, env_name)
-        print('Saving models to {} and {}'.format(actor_path, critic_path))
-        torch.save(self.actor_target.state_dict(), actor_path)
-        torch.save(self.critic_target.state_dict(), critic_path)
-        torch.save(self.critic_optim.state_dict(), critic_path+"_optim")
-        torch.save(self.actor_optim.state_dict(), actor_path+"_optim")
+    def save_model(self, reward):
+        if not os.path.exists(self.dirname):
+            os.makedirs(self.dirname)
+        torch.save(self.actor_target.state_dict(), os.path.join(self.dirname, "actortarget_{}".format(reward)))
+        torch.save(self.critic_target.state_dict(), os.path.join(self.dirname, "critictarget_{}".format(reward)))
+        #torch.save(self.critic_optim.state_dict(), os.path.join(self.dirname, "criticoptim"))
+        #torch.save(self.actor_optim.state_dict(), os.path.join(self.dirname, "actoroptim"))
 
     def load_model(self):
        if not os.path.exists(os.path.join(self.dirname, "ddpg_critic_cartpolestab")):
@@ -219,25 +214,22 @@ class DDPG:
                 self.actor_lr_scheduler.step()
                 episode += 1
                 # if out actor is really good, test target actor. If the target actor is good too, save it.
-                if total_reward > 200 and reward_record < total_reward:
+                if reward_record < total_reward:
                     trial_average_reward = self.trial()
                     if trial_average_reward > reward_record:
                         print("New record")
                         reward_record = trial_average_reward
-                        self.save_model(self.dirname, "cartpolestab")
+                        self.save_model(trial_average_reward)
                 rew.append(total_reward)
 
         plt.xlabel("episode")
         plt.ylabel("reward")
-        plt.plot(episode, rew)
+        plt.plot(rew)
         print(reward_record)
-        dirname = self.dirname+'record-reward_{}'.format(reward_record)
-        if os.path.exists(self.dirname):
-            os.rename(self.dirname, dirname)
-        if not os.path.exists(dirname):
-            os.makedirs(dirname)
-        self.dirname = dirname
-        plt.savefig(dirname+'/rewardplot.png')
-        with open(dirname+'/parameters', 'w+') as f:
-            f.write('buffer_size={}\tbatch_size={}\tbatch_scheduler={}\tgamma={:.4f}\ttau={:.4f}\tepisodes={}\twarmup_samples={}\tnoise_decay={:.4f}\tactor_lr={:.8f}\tcritic_lr={:.8f}\tactor_lr_decay={:.4f}\tcritic_lr_decay={:.4f}\tactor_hidden_layers={}\tcritic_hidden_layers={}\tepochs={}'.format(self.buffer_size, self.batch_size, self.batch_scheduler, self.gamma, self.tau, self.episodes, self.warmup_samples, self.noise_decay, self.actor_lr, self.critic_lr, self.actor_lr_decay, self.critic_lr_decay, self.actor_hidden_layers, self.critic_hidden_layers, self.epochs))
-        return self.dirname
+        plt.savefig(os.path.join(self.dirname, "rewardplot.png"))
+
+        # test & save final model
+        trial_average_reward = self.trial()
+        self.save_model("{:.2f}_final".format(trial_average_reward))
+
+        return reward_record
