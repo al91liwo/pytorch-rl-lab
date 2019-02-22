@@ -7,6 +7,5 @@ __pycache__
 /*.egg-info
 .DS_Store
 /quanser_robots
-/models
 *.csv
 /clients

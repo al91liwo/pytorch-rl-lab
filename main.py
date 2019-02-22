@@ -30,8 +30,7 @@ def write_config(config, configfile):
 
 def train_and_evaluate(env, outdir, config):
     dev = "cuda" if torch.cuda.is_available() else "cpu"
-    dev = "cpu"
-    print(config)
+    print("dev: ", dev, config)
     steps = ast.literal_eval(config["steps"])
     warmup_samples = ast.literal_eval(config["warmup_samples"])
     buffer_size = ast.literal_eval(config["buffer_size"])
@@ -111,11 +110,14 @@ def main():
     run_configs = parse_config(args.hyperparameters)
 
     for config in run_configs:
-        env = gym.make(config['env'])
+        try:
+            env = gym.make(config['env'])
 
-        train_and_evaluate(env, args.outdir, config)
+            train_and_evaluate(env, args.outdir, config)
 
-        env.close()
+            env.close()
+        except:
+            print("error in config:", config)
 
 
 main()
