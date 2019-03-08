@@ -20,7 +20,7 @@ class DDPG:
     
     def __init__(self, env, dirname, action_space_limits, buffer_size=10000, batch_size=64, epochs=1,
                  gamma=.99, tau=1e-2, steps=100000, warmup_samples=1000, noise_decay=0.9,
-                 transform=lambda x: x, actor_lr=1e-3, critic_lr=1e-3, actor_lr_decay=1., critic_lr_decay=1., trial_horizon=5000,
+                 transform=lambda x: x, actor_lr=1e-3, critic_lr=1e-3, lr_decay=1.0, lr_min=1.e-7, trial_horizon=500,
                  actor_hidden_layers=[10, 10, 10], critic_hidden_layers=[10, 10, 10], batch_size_scheduler=0, device="cpu"):
         self.device = device
         self.env = env
@@ -34,8 +34,8 @@ class DDPG:
         self.buffer_size = buffer_size
         self.actor_lr = actor_lr
         self.critic_lr = critic_lr
-        self.actor_lr_decay = actor_lr_decay
-        self.critic_lr_decay = critic_lr_decay
+        self.lr_decay = lr_decay
+        self.lr_min = lr_min
         self.actor_hidden_layers = actor_hidden_layers
         self.critic_hidden_layers = critic_hidden_layers
         self.warmup_samples = warmup_samples
@@ -48,8 +48,8 @@ class DDPG:
         
         self.actor_optim = torch.optim.Adam(self.actor_network.parameters(), lr=actor_lr)
         self.critic_optim = torch.optim.Adam(self.critic_network.parameters(), lr=critic_lr)
-        self.actor_lr_scheduler = torch.optim.lr_scheduler.ExponentialLR(self.actor_optim, actor_lr_decay)
-        self.critic_lr_scheduler = torch.optim.lr_scheduler.ExponentialLR(self.critic_optim, critic_lr_decay)
+        self.actor_lr_scheduler = torch.optim.lr_scheduler.ExponentialLR(self.actor_optim, lr_decay)
+        self.critic_lr_scheduler = torch.optim.lr_scheduler.ExponentialLR(self.critic_optim, lr_decay)
         self.loss = nn.MSELoss()
         self.noise_decay = torch.tensor(noise_decay, device=self.device)
         self.trial_horizon = trial_horizon
@@ -112,9 +112,10 @@ class DDPG:
             average_reward = 0
             for episode in range(episodes):
                 done = False
+
                 obs = self.env.reset()
                 total_reward = 0
-                for t in range(self.trial_horizon):
+                for t in range(5000):
                     obs = self.transformObservation(obs)
                     state = torch.tensor(obs, dtype=torch.float32).to(self.device)
 
@@ -178,8 +179,9 @@ class DDPG:
             statusprint = "{} /{} | {:.0f} /{:.0f} | {} /{} | alr,clr: {:.2E} {:.2E} | bs: {}"
             print(statusprint.format(step, self.total_steps, total_reward, reward_record, self.replayBuffer.count, self.replayBuffer.buffer_size, self.critic_lr_scheduler.get_lr()[0], self.actor_lr_scheduler.get_lr()[0], batch_size_schedulers[self.batch_scheduler](self.batch_size,episode)))
             total_reward = 0
+            i = 0
             while not done:
-
+              
                 action = self.action_selection(torch.squeeze(torch.tensor(state, dtype=torch.float32, device=self.device)))
 
                 action = self.noise_torch.sample((self.action_dim,)) *self.noise_decay**episode + action
@@ -188,10 +190,11 @@ class DDPG:
 
                 action = action.to("cpu").detach().numpy()
                 next_state, reward, done, _ = self.env.step(action)
-
+                done = done or i < self.trial_horizon
                 next_state = self.transformObservation(next_state)
-
+    
                 total_reward += reward
+            
                 self.replayBuffer.add(state, action, reward, next_state, done)
                 state = next_state
                 if self.replayBuffer.count >= self.n_batches:
@@ -206,15 +209,17 @@ class DDPG:
                         self.soft_update(self.critic_network, self.critic_target)
 
                 step += 1
-
+                i = i + 1
             if self.replayBuffer.count >= self.n_batches:
 #                print("critic loss: ", critic_loss)
 #                print("actor_loss: ", actor_loss)
-                self.critic_lr_scheduler.step()
-                self.actor_lr_scheduler.step()
+                if self.critic_lr_scheduler.get_lr()[0] > self.lr_min:
+                    self.critic_lr_scheduler.step()
+                if self.actor_lr_scheduler.get_lr()[0] > self.lr_min:
+                    self.actor_lr_scheduler.step()
                 episode += 1
                 # if out actor is really good, test target actor. If the target actor is good too, save it.
-                if reward_record < total_reward:
+                if reward_record < total_reward and total_reward > 500:
                     trial_average_reward = self.trial()
                     if trial_average_reward > reward_record:
                         print("New record")

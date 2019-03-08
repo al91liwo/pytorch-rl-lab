@@ -4,9 +4,9 @@ import quanser_robots
 import gym
 import sys
 
-env = gym.make("CartpoleStabShort-v0")
+env = gym.make("CartpoleSwingShort-v0")
 
-layers = [env.observation_space.shape[0], 100, 100, 50, env.action_space.shape[0]]
+layers = [env.observation_space.shape[0], 400, 500, env.action_space.shape[0]]
 
 actor = ActorNetwork(layers, torch.tensor(-5.),torch.tensor(5.))
 actor.load_state_dict(torch.load(sys.argv[1]))

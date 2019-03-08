@@ -42,6 +42,8 @@ def train_and_evaluate(env, outdir, config):
     actor_hidden_layers = ast.literal_eval(config["actor_hidden_layers"])
     critic_hidden_layers = ast.literal_eval(config["critic_hidden_layers"])
     run_outdir = os.path.join(outdir, "{}_{}".format(config["run_id"], config["env"]))
+    lr_decay = ast.literal_eval(config["lr_decay"])
+    lr_min = ast.literal_eval(config["lr_min"])
 
     if not os.path.exists(run_outdir):
         os.makedirs(run_outdir)
@@ -55,7 +57,7 @@ def train_and_evaluate(env, outdir, config):
           critic_hidden_layers)
 
     ddpg = DDPG(env=env, dirname=run_outdir, steps=steps, warmup_samples=warmup_samples, buffer_size=buffer_size, batch_size=batch_size,
-                actor_lr=actor_lr, critic_lr=critic_lr, noise_decay=noise_decay, action_space_limits=([-5.], [5.]),
+                actor_lr=actor_lr, critic_lr=critic_lr, lr_decay=lr_decay, lr_min=lr_min, noise_decay=noise_decay, action_space_limits=([-10.], [10.]),
                 tau=tau, actor_hidden_layers=actor_hidden_layers, critic_hidden_layers=critic_hidden_layers,
                  device=dev)
 
@@ -116,8 +118,8 @@ def main():
             train_and_evaluate(env, args.outdir, config)
 
             env.close()
-        except:
-            print("error in config:", config)
+        except Exception as e:
+            print("error", e, "in config:", config)
 
 
 main()
