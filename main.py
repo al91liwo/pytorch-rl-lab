@@ -58,7 +58,7 @@ def train_and_evaluate(env, outdir, config):
 
     ddpg = DDPG(env=env, dirname=run_outdir, steps=steps, warmup_samples=warmup_samples, buffer_size=buffer_size, batch_size=batch_size,
                 actor_lr=actor_lr, critic_lr=critic_lr, lr_decay=lr_decay, lr_min=lr_min, noise_decay=noise_decay, action_space_limits=([-10.], [10.]),
-                tau=tau, actor_hidden_layers=actor_hidden_layers, critic_hidden_layers=critic_hidden_layers,
+                tau=tau, actor_hidden_layers=actor_hidden_layers, critic_hidden_layers=critic_hidden_layers, trial_horizon=2500,
                  device=dev)
 
     reward_record_training = ddpg.train()
@@ -83,7 +83,7 @@ def train_and_evaluate(env, outdir, config):
                 obs = ddpg.transformObservation(obs)
                 state = torch.tensor(obs, dtype=torch.float32).to(dev).unsqueeze(0)
 
-                action = ddpg.actor_target(state).squeeze().cpu().detach().numpy()
+                action = ddpg.actor_target(state).squeeze().unsqueeze(0).cpu().detach().numpy()
                 obs, reward, done, _ = env.step(action)
                 total_reward += reward
 
