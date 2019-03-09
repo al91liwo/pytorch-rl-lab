@@ -81,9 +81,9 @@ def train_and_evaluate(env, outdir, config):
             print(step)
             while not done:
                 obs = ddpg.transformObservation(obs)
-                state = torch.tensor(obs, dtype=torch.float32).to(dev)
+                state = torch.tensor(obs, dtype=torch.float32).to(dev).unsqueeze(0)
 
-                action = ddpg.actor_target(state).cpu().detach().numpy()
+                action = ddpg.actor_target(state).squeeze().cpu().detach().numpy()
                 obs, reward, done, _ = env.step(action)
                 total_reward += reward
 

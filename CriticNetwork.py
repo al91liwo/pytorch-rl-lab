@@ -6,7 +6,7 @@ from util import create_tens
 
 class CriticNetwork(nn.Module):
 
-    def __init__(self, layers, activations=None, final_w=0.003):
+    def __init__(self, layers, activations=None, batch_norm=True, final_w=0.003):
         super(CriticNetwork, self).__init__()
         if activations == None:
             self.activations = [nn.ReLU6()] * (len(layers)-1)
@@ -14,6 +14,9 @@ class CriticNetwork(nn.Module):
             self.activations = activations
 
         self.layers = nn.ModuleList([nn.Linear(dim_in, dim_out) for dim_in, dim_out in zip(layers[:-1], layers[1:])])
+        self.use_batch_norm = batch_norm
+        self.batch_norms = nn.ModuleList([nn.BatchNorm1d(dim_out) for dim_out in layers[1:-1]])
+
 
         # initialize weights
         for i in range(len(self.layers) - 2):
@@ -26,6 +29,10 @@ class CriticNetwork(nn.Module):
     def forward (self, state, action):
         output = torch.cat((state, action), 1)
         for i in range(len(self.layers) - 1):
-            output = self.activations[i](self.layers[i](output))
+            output = self.layers[i](output)
+            output = self.activations[i](output)
+            if self.use_batch_norm:
+                output = self.batch_norms[i-1](output)
+
         output = self.layers[-1](output)
         return output

@@ -20,7 +20,7 @@ class DDPG:
     
     def __init__(self, env, dirname, action_space_limits, buffer_size=10000, batch_size=64, epochs=1,
                  gamma=.99, tau=1e-2, steps=100000, warmup_samples=1000, noise_decay=0.9,
-                 transform=lambda x: x, actor_lr=1e-3, critic_lr=1e-3, lr_decay=1.0, lr_min=1.e-7, trial_horizon=500,
+                 transform=lambda x: x, actor_lr=1e-3, critic_lr=1e-3, lr_decay=1.0, lr_min=1.e-7, trial_horizon=5000,
                  actor_hidden_layers=[10, 10, 10], critic_hidden_layers=[10, 10, 10], batch_size_scheduler=0, device="cpu"):
         self.device = device
         self.env = env
@@ -107,6 +107,7 @@ class DDPG:
         return: average total reward
         """
         print("trial average total reward:")
+        self.actor_target.eval()
         with torch.no_grad():
             episodes = 5
             average_reward = 0
@@ -115,12 +116,12 @@ class DDPG:
 
                 obs = self.env.reset()
                 total_reward = 0
-                for t in range(5000):
+                for t in range(self.trial_horizon):
                     obs = self.transformObservation(obs)
                     state = torch.tensor(obs, dtype=torch.float32).to(self.device)
-
-                    action = self.actor_target(state).cpu().detach().numpy()
-                    obs, reward, done, _ = self.env.step(action)
+                   
+                    action = self.actor_target(state.unsqueeze(0)).squeeze().cpu().detach().numpy()
+                    obs, reward, done, _ = self.env.step(np.array([action]))
                     total_reward += reward
                     if done:
                         break
@@ -128,6 +129,7 @@ class DDPG:
                 # calculate average reward with incremental average
                 average_reward += total_reward/episodes
         print(average_reward)
+        self.actor_target.train()
         return average_reward
 
     def save_model(self, reward):
@@ -182,7 +184,7 @@ class DDPG:
             i = 0
             while not done:
               
-                action = self.action_selection(torch.squeeze(torch.tensor(state, dtype=torch.float32, device=self.device)))
+                action = self.action_selection(torch.tensor(state, dtype=torch.float32, device=self.device).unsqueeze(0)).squeeze()
 
                 action = self.noise_torch.sample((self.action_dim,)) *self.noise_decay**episode + action
 
@@ -190,7 +192,7 @@ class DDPG:
 
                 action = action.to("cpu").detach().numpy()
                 next_state, reward, done, _ = self.env.step(action)
-                done = done or i < self.trial_horizon
+                done = done or i >= self.trial_horizon
                 next_state = self.transformObservation(next_state)
     
                 total_reward += reward
@@ -232,6 +234,10 @@ class DDPG:
         plt.plot(rew)
         print(reward_record)
         plt.savefig(os.path.join(self.dirname, "rewardplot.png"))
+        
+        # write plot data to a file
+        with open(os.path.join(self.dirname, "rewarddata"), "w+") as f:
+            f.write(','.join([str(reward) for reward in rew]))
 
         # test & save final model
         trial_average_reward = self.trial()
