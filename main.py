@@ -3,7 +3,6 @@ import torch
 import matplotlib.pyplot as plt
 import quanser_robots
 from DDPG import DDPG
-from DDPG import batch_size_schedulers
 import numpy as np
 import numpy.random as rnd
 from argparse import ArgumentParser
