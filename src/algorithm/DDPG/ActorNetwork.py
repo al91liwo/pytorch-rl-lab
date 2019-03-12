@@ -18,7 +18,6 @@ class ClampTanh(nn.Module):
         self.center = (low + high)/2
 
     def forward(self, x):
-        print(x, self.range, self.center)
         return self.tanh(x) * self.range + self.center
 
 

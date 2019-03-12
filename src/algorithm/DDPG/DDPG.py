@@ -47,8 +47,8 @@ class DDPG:
         self.env = env
         self.is_quanser_env = is_quanser_env
         self.dirname = dirname
-        self.env_low = torch.tensor(action_space_limits[0], device=self.device)
-        self.env_high = torch.tensor(action_space_limits[1], device=self.device)
+        self.env_low = torch.tensor(action_space_limits[0], device=self.device, dtype=torch.float)
+        self.env_high = torch.tensor(action_space_limits[1], device=self.device, dtype=torch.float)
         self.warmup_samples = warmup_samples
         self.total_steps = steps
         self.transformObservation = transform
@@ -71,7 +71,9 @@ class DDPG:
         #actor and critic parameters + initialization      
         self.actor_hidden_layers = actor_hidden_layers
         self.critic_hidden_layers = critic_hidden_layers
-        self.actor_network = ActorNetwork([self.state_dim, *self.actor_hidden_layers, self.action_dim], torch.tensor(self.env_low, device=self.device), torch.tensor(self.env_high, device=self.device)).to(self.device)
+        self.actor_network = ActorNetwork([self.state_dim, *self.actor_hidden_layers, self.action_dim],
+                                          torch.tensor(self.env_low[0], device=self.device, dtype=torch.float),
+                                          torch.tensor(self.env_high[0], device=self.device, dtype=torch.float)).to(self.device)
         self.critic_network = CriticNetwork([self.state_dim + self.action_dim, *self.critic_hidden_layers, 1]).to(self.device)
         self.actor_target = copy.deepcopy(self.actor_network).to(self.device)
         self.critic_target = copy.deepcopy(self.critic_network).to(self.device)
@@ -84,10 +86,10 @@ class DDPG:
         
         #training parameters
         self.loss = nn.MSELoss()
-        self.noise_decay = torch.tensor(noise_decay, device=self.device)
+        self.noise_decay = torch.tensor(noise_decay, device=self.device, dtype=torch.float)
         self.trial_horizon = trial_horizon
-        self.gamma = torch.tensor(gamma, device=self.device)
-        self.tau = torch.tensor(tau, device=self.device)
+        self.gamma = torch.tensor(gamma, device=self.device, dtype=torch.float)
+        self.tau = torch.tensor(tau, device=self.device, dtype=torch.float)
         #gaussian noise on actions used
         self.noise_torch = torch.distributions.normal.Normal(0, self.env_high[0])
 
@@ -144,7 +146,7 @@ class DDPG:
         """
         state = torch.tensor(state, dtype=torch.float32).to(self.device).unsqueeze(0)
         action = network(state).squeeze()
-        #dimensionality check of actions
+        # dimensionality check of actions
         action = action.unsqueeze(0).cpu().detach().numpy() if action.dim() == 0 else action
         if self.is_quanser_env:
             action = np.array(action)
@@ -241,10 +243,11 @@ class DDPG:
             total_reward = 0
             i = 0
             while not done:
-              
-                action = self.action_selection(torch.tensor(state, dtype=torch.float32, device=self.device).unsqueeze(0)).squeeze()
 
-                action = self.noise_torch.sample((self.action_dim,)) *self.noise_decay**episode + action
+                action = self.action_selection(
+                torch.tensor(state, dtype=torch.float32, device=self.device).unsqueeze(0)).squeeze()
+
+                action = self.noise_torch.sample((self.action_dim,)) * self.noise_decay ** episode + action
 
                 action = torch.clamp(action, min=self.env_low[0], max=self.env_high[0])
 

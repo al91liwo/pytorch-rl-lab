@@ -9,7 +9,7 @@ def create_tens(input_dim, weight):
     param weight: weight under uniform distribution
     return: tensor of size input_dim with weights under uniform distribution
     """
-    return torch.zeros(input_dim).uniform_(-weight, weight)
+    return torch.zeros(input_dim, dtype=torch.float).uniform_(-weight, weight)
 
 def validate_config(config, layout):
     """

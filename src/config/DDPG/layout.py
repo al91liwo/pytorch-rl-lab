@@ -17,7 +17,7 @@ def layout():
         #every layout needs a run_id param
         "run_id": 0,
         "env": 0,
-        "action_space_limits": [-10, 10],
+        "action_space_limits": ([-10.], [10.]),
         "buffer_size": 10000,
         "batch_size": 64,
         "is_quanser_env": True,
