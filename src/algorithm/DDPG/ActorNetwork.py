@@ -18,6 +18,7 @@ class ClampTanh(nn.Module):
         self.center = (low + high)/2
 
     def forward(self, x):
+        print(x, self.range, self.center)
         return self.tanh(x) * self.range + self.center
 
 
@@ -31,6 +32,7 @@ class ActorNetwork(nn.Module):
             self.activations = activations
 
         self.clampactivation = ClampTanh(actionspace_low, actionspace_high)
+        print(layers)
         self.layers = nn.ModuleList([nn.Linear(dim_in, dim_out) for dim_in, dim_out in zip(layers[:-1], layers[1:])])
         self.use_batch_norm = batch_norm
         self.batch_norms = nn.ModuleList([nn.BatchNorm1d(dim_out) for dim_out in layers[1:-1]])

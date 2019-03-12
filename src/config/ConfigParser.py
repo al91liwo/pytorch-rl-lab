@@ -1,5 +1,7 @@
 from src.util import validate_config
 import csv
+import src.algorithm
+import src.config
 
 def getAlgorithmConfigLayout(algorithm):
     configs = {
@@ -17,35 +19,45 @@ class ConfigParser:
         :param run_configs: .csv file with all training sessions (see Documentation for more information)
         :param algorithm: algorithm name specified by the developers creating rl-algorithms
         """
-
+        print(run_configs)
         self.algorithm = getAlgorithmConfigLayout(algorithm)
-        self.algorithm_directory = "/algorithm/"+self.algorithm
+        self.algorithm_directory = "src.algorithm."+self.algorithm+"."+self.algorithm
+        self.layout_directory = "src.config."+self.algorithm+".layout"
 
         if self.algorithm == "INVALIDATED":
             raise Exception("given ALGORITHM: "+ self.algorithm + " is not specified in config/ALGORITHM")
 
         try:
-            # self.layoutDict is a dict of the hyperparameters for given algorithm
-            self.layoutDict = __import__(self.algorithm_directory + "layout.py").layout()
+            self.algorithm_layout = __import__(self.layout_directory, fromlist=['config', self.algorithm, 'layout'])
         except Exception as e:
-            raise Exception("specified ALGORITHM: " + self.algorithm + " has no layout in config/" + self.algorithm + "layout.py")
+            raise Exception("specified ALGORITHM: " + self.algorithm + " has no layout.py specified in config/" + self.algorithm + "/layout.py")
 
         try:
-            # loading algorithm class from src/algorithm/YOUR_ALGORITHM
-            self.algorithm_class = __import__("src/config"+self.algorithm+"/" + self.algorithm + ".py").instance_from_config
+            self.layout_dict = self.algorithm_layout.layout()
         except Exception as e:
-            raise Exception(self.algorithm + ".py" + " does not exist in " + self.algorithm_directory)
+            raise Exception("specified ALGORITHM: " + self.algorithm +
+                            " has no layout function specified in config/" +
+                            self.algorithm + "/layout.py")
         try:
-            self.result_handler = __import__(self.algorithm_directory+"layout.py").result_handler
+            # loading algorithm class from src/algorithm/YOUR_ALGORITHM
+            self.algorithm_class = self.algorithm_layout.instance_from_config
         except Exception as e:
-            raise Exception("Your algorithm does not define a result_handler function at " +self.algorithm_directory)
+            raise Exception("specified ALGORITHM: " + self.algorithm +
+                            " has no instance_from_config function specified in config/" +
+                            self.algorithm + "/layout.py")
+        try:
+            self.result_handler = self.algorithm_layout.result_handler
+        except Exception as e:
+            raise Exception("specified ALGORITHM: " + self.algorithm +
+                            " has no result_handler function specified in config/" +
+                            self.algorithm + "/layout.py")
 
         self.run_configs = self.parse_config(run_configs)
 
-        for config in run_configs:
+        for config in self.run_configs:
             # first we validate every config
             # making sure training sessions will be successfull by clean parameters
-            validate_config(config, self.layoutDict)
+            validate_config(config, self.layout_dict)
 
 
     def parse_config(self, configfile):

@@ -39,6 +39,7 @@ class DDPG:
         param critic_hidden_layers: hidden layers of critic network as a numeric list
         param device: on which device to train your torch nn.Models on either cpu or gpu
         """
+
         self.device = device
         #algorithm timestamp
         self.started = datetime.datetime.now()

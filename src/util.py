@@ -20,7 +20,7 @@ def validate_config(config, layout):
     """
     layout = layout
 
-    for l in layout:
-        if not l in config:
-            raise Exception(l + " is no valid parameter, please check your layout or configuration")
-        layout[l] = config[l]
+    for c in config:
+        if not c in layout:
+            raise Exception(c + " is no valid parameter, please check your layout or configuration")
+        layout[c] = config[c]

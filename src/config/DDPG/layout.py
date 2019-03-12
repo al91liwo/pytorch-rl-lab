@@ -1,7 +1,11 @@
+import gym
+import ast
+import quanser_robots
 # this is the validate function to validate any config under the developers layout constraint
 from src.util import validate_config
 # import the developers algorithm here
 from src.algorithm.DDPG.DDPG import DDPG
+
 
 
 def layout():
@@ -10,8 +14,10 @@ def layout():
     :return: layout as a dict
     """
     layout_dict = {
+        #every layout needs a run_id param
+        "run_id": 0,
         "env": 0,
-        "action_space_limits": 0,
+        "action_space_limits": [-10, 10],
         "buffer_size": 10000,
         "batch_size": 64,
         "is_quanser_env": True,
@@ -41,13 +47,18 @@ def instance_from_config(config):
     """
     layout_dict = layout()
     validate_config(config, layout_dict)
+    for key in config:
+        if not (key == "run_id" or key == "env"):
+            config[key] = ast.literal_eval(config[key])
     # merging config into layout, EVERY layout needs a "run_id" variable
     layout_dict.update(config)
 
     if not "run_id" in layout_dict.keys():
         raise Exception('Every config needs a "run_id"')
 
-    return DDPG(env=layout_dict["env"], action_space_limits=layout_dict["action_space_limits"],
+    env = gym.make(layout_dict["env"])
+
+    return DDPG(env=env, action_space_limits=layout_dict["action_space_limits"],
                 buffer_size=layout_dict["buffer_size"], batch_size=layout_dict["batch_size"],
                 is_quanser_env=layout_dict["is_quanser_env"], gamma=layout_dict["gamma"],
                 tau=layout_dict["tau"], steps=layout_dict["steps"], warmup_samples=layout_dict["warmup_samples"],
