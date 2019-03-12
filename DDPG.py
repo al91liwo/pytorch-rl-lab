@@ -142,8 +142,10 @@ class DDPG:
         param state: state to forward through network
         return: action for environment step 
         """
-        state = torch.tensor(state, dtype=torch.float32).to(self.device)
-        action = [network(state.unsqueeze(0)).squeeze().cpu().detach().numpy()]
+        state = torch.tensor(state, dtype=torch.float32).to(self.device).unsqueeze(0)
+        action = network(state).squeeze()
+        #dimensionality check of actions
+        action = action.unsqueeze(0).cpu().detach().numpy() if action.dim() == 0 else action
         if self.is_quanser_env:
             action = np.array(action)
         return action
@@ -166,8 +168,7 @@ class DDPG:
                 for t in range(self.trial_horizon):
                     state = self.transformObservation(obs)
                     action = self.forwardActorNetwork(self.actor_target, state)
-                    
-                    obs, reward, done, _ = self.env.step(action) 
+                    obs, reward, done, _ = self.env.step(action)
                     total_reward += reward
                     if done:
                         break
@@ -275,7 +276,7 @@ class DDPG:
                     self.actor_lr_scheduler.step()
                 episode += 1
                 # if out actor is really good, test target actor. If the target actor is good too, save it.
-                if reward_record < total_reward and total_reward > 500:
+                if reward_record < total_reward and total_reward > 50:
                     trial_average_reward = self.trial()
                     if trial_average_reward > reward_record:
                         print("New record")
@@ -288,6 +289,7 @@ class DDPG:
         plt.plot(rew)
         print(reward_record)
         plt.savefig(os.path.join(self.dirname, "rewardplot.png"))
+        plt.clr()
         
         # write plot data to a file
         with open(os.path.join(self.dirname, "rewarddata"), "w+") as f:
