@@ -1,8 +1,7 @@
 import numpy as np
 from torch import nn
-import torch
 
-from util import create_tens
+from src.util import create_tens
 
 
 class ClampTanh(nn.Module):

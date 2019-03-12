@@ -2,7 +2,7 @@ import numpy as np
 import torch
 from torch import nn
 
-from util import create_tens
+from src.util import create_tens
 
 class CriticNetwork(nn.Module):
 

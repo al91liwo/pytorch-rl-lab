@@ -4,20 +4,18 @@ sys.path.append('../')
 
 import random
 
-import numpy as np
+from src import ReplayBuffer as rpb
 
-import ReplayBuffer as rpb
-import Transition as trans
 
 def ran_trans():
     """
-    creates random transition tupel
+    creates random transition batches
     """
     s = random.randint(1,101)
     a = random.randint(1,101)
     r = - random.randint(1,101)
     s_2 = random.randint(1,101)
-    return trans.Transition(s, a, r, s_2)
+    return (s, a, r, s_2)
 
 buffer0 = rpb.ReplayBuffer(5)
 transitions = [ran_trans() for i in range(10)]
