@@ -4,12 +4,11 @@ from torch import nn
 import matplotlib.pyplot as plt
 import numpy as np
 
-from src.Algorithm.DDPG.ActorNetwork import ActorNetwork
-from src.Algorithm.DDPG.CriticNetwork import CriticNetwork
+from src.algorithm.DDPG.ActorNetwork import ActorNetwork
+from src.algorithm.DDPG.CriticNetwork import CriticNetwork
 from src.ReplayBuffer import ReplayBuffer
 import os
 import datetime
-
 
 class DDPG:
     
