@@ -1,10 +1,8 @@
 import gym
 import torch
-import matplotlib.pyplot as plt
 from quanser_robots import GentlyTerminating
-import os
 import sys
-from ActorNetwork import ActorNetwork
+from src.algorithm.DDPG.ActorNetwork import ActorNetwork
 import numpy as np
 import pandas
 

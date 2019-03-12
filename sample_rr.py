@@ -1,11 +1,7 @@
 import gym
-import torch
-import matplotlib.pyplot as plt
 import quanser_robots
 import pandas as pd
 from datetime import datetime
-
-from DDPG import DDPG
 
 environment = "QubeRR-v0"
 

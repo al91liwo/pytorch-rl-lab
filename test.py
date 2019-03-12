@@ -1,10 +1,8 @@
 import gym
 import torch
 import matplotlib.pyplot as plt
-import quanser_robots
-from DDPG import DDPG
-import ActorNetwork
-import CriticNetwork
+from src.algorithm.DDPG import ActorNetwork, CriticNetwork
+
 
 def load_model(actor_path, critic_path, actor_hidden_layers=[400, 300], critic_hidden_layers=[400, 300], action_dim, state_dim,  env_low, env_high):
     print('Loading models from {} and {}'.format(actor_path, critic_path))
@@ -13,7 +11,7 @@ def load_model(actor_path, critic_path, actor_hidden_layers=[400, 300], critic_h
         actor.load_state_dict(torch.load(actor_path))
         actor.eval()
     if critic_path is not None:
-        critic =CriticNetwork([state_dim + action_dim, *critic_hidden_layers, 1])
+        critic = CriticNetwork([state_dim + action_dim, *critic_hidden_layers, 1])
         critic.load_state_dict(torch.load(actor_path))
         critic.eval()
     return actor, critic
