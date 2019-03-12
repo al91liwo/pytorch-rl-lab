@@ -26,7 +26,7 @@ class ConfigParser:
 
         try:
             # self.layoutDict is a dict of the hyperparameters for given algorithm
-            self.layoutDict = __import__(self.algorithm + "layout.py").layout()
+            self.layoutDict = __import__(self.algorithm_directory + "layout.py").layout()
         except Exception as e:
             raise Exception("specified ALGORITHM: " + self.algorithm + " has no layout in config/" + self.algorithm + "layout.py")
 
@@ -35,6 +35,10 @@ class ConfigParser:
             self.algorithm_class = __import__("src/config"+self.algorithm+"/" + self.algorithm + ".py").instance_from_config
         except Exception as e:
             raise Exception(self.algorithm + ".py" + " does not exist in " + self.algorithm_directory)
+        try:
+            self.result_handler = __import__(self.algorithm_directory+"layout.py").result_handler
+        except Exception as e:
+            raise Exception("Your algorithm does not define a result_handler function at " +self.algorithm_directory)
 
         self.run_configs = self.parse_config(run_configs)
 
@@ -57,6 +61,13 @@ class ConfigParser:
                 run_configs.append(row)
         return run_configs
 
+    def handle_result(self, result, outdir):
+        """
+        Every developer can handle his results as he wants
+        :param result: the result of a training session
+        :param outdir: the output directory that may be used by a developer
+        """
+        self.result_handler(result, outdir)
 
 
 
