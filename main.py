@@ -1,6 +1,10 @@
 from argparse import ArgumentParser
 from train import train
 
+def real(algorithm):
+    print(algorithm)
+def test(algorithm):
+    print(algorithm)
 def main():
     parser = ArgumentParser("OpenAiGym algorithm")
     parser.add_argument('algorithm', type=str,
@@ -20,8 +24,9 @@ def main():
     hyperparameters = args.hyperparameters
     outdir = args.outdir
 
+    print(mode)
     if mode == "train":
-        train(run_configs=hyperparameters, lgorithm=algorithm, outdir=outdir)
+        train(run_configs=hyperparameters, algorithm=algorithm, outdir=outdir)
         return
     if mode == "real":
         real(algorithm=algorithm)
