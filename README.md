@@ -1,7 +1,7 @@
 # ddpg-implementation
 DDPG-implementation of Group 06 Frederik Wegner and Alexander Lind
 
-##Installation Guide
+## Installation Guide
 
 This guide assumes you are working under Ubuntu 16.04
 
@@ -40,7 +40,7 @@ This guide assumes you are working under Ubuntu 16.04
    from the [example readme](src/example/Readme.md).
 
 
-##Getting started
+## Getting started
 
 You have the choice between training or doing trials of an specified algorithm of our [algorithms](src/algorithm/Readme.md).
 It is possbile to train or test the algorithms on the real environment ('rr') or the simulated environment ('sim')
@@ -56,7 +56,7 @@ Generally we have specified two different commands
 
 where you always can choose between `{sim/rr}` the simulated environment `sim` or the real environment `rr`.
 
-##Example
+## Example
 
 For example you can train the algorithm [DDPG](src/algorithm/DDPG/Readme.md) with given hyperparameters as a .csv file. For example [parameters.csv](parameters.csv)
 
