@@ -38,7 +38,7 @@ This guide assumes you are working under Ubuntu 16.04
    from the [example readme](src/example/Readme.md).
 
 
-##Getting started
+###Getting started
 
 You have the choice between training or doing trials of an specified algorithm of our [algorithms](src/algorithm/Readme.md).
 It is possbile to train or test the algorithms on the real environment ('rr') or the simulated environment ('sim')
