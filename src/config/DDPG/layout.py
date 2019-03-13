@@ -1,8 +1,7 @@
 import gym
 import ast
-import quanser_robots
 # this is the validate function to validate any config under the developers layout constraint
-from src.util import validate_config
+from src.utility.util import validate_config
 # import the developers algorithm here
 from src.algorithm.DDPG.DDPG import DDPG
 

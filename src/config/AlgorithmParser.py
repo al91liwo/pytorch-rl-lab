@@ -1,9 +1,8 @@
-from src.util import validate_config
+from src.utility.util import validate_config
 import csv
-import src.algorithm
-import src.config
 
-def getAlgorithmConfigLayout(algorithm):
+
+def get_algorithm_config_layout(algorithm):
     """
     This right now specifies all available algorithms in this repository,
     will be restructured in the future
@@ -19,14 +18,14 @@ def getAlgorithmConfigLayout(algorithm):
 
 class AlgorithmParser:
 
-    def __init__(self, run_configs, episodes=0, algorithm="DDPG"):
+    def __init__(self, run_configs, algorithm="DDPG"):
         """
         Parse the config and starts all training or trial sessions for given configuration
         :param run_configs: .csv file with all training sessions (see Documentation for more information)
         :param algorithm: algorithm name specified by the developers creating rl-algorithms
         """
 
-        self.algorithm = getAlgorithmConfigLayout(algorithm)
+        self.algorithm = get_algorithm_config_layout(algorithm)
         self.algorithm_directory = "src.algorithm."+self.algorithm+"."+self.algorithm
         self.layout_directory = "src.config."+self.algorithm+".layout"
 

@@ -1,8 +1,5 @@
 import random
-from src import ReplayBuffer as rpb
-
-
-
+from src.utility import ReplayBuffer as rpb
 
 
 def ran_trans():

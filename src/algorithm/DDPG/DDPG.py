@@ -2,12 +2,11 @@ import copy
 import torch
 from quanser_robots import GentlyTerminating
 from torch import nn
-import matplotlib.pyplot as plt
 import numpy as np
 
 from src.algorithm.DDPG.ActorNetwork import ActorNetwork
 from src.algorithm.DDPG.CriticNetwork import CriticNetwork
-from src.ReplayBuffer import ReplayBuffer
+from src.utility.ReplayBuffer import ReplayBuffer
 import os
 import datetime
 

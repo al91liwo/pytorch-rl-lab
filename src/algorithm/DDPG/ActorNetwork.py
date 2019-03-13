@@ -1,7 +1,7 @@
 import numpy as np
 from torch import nn
 
-from src.util import create_tens
+from src.utility.util import create_tens
 
 
 class ClampTanh(nn.Module):
@@ -40,14 +40,14 @@ class ActorNetwork(nn.Module):
         :param batch_norm: either use or use not batch norm for this network
         :param final_w: weight initialization for the output layer
         """
+
         super(ActorNetwork, self).__init__()
-        if activations == None:
+        if activations is None:
             self.activations = [nn.ReLU6()]*(len(layers)-1)
         else:
             self.activations = activations
 
-        self.clampactivation = ClampTanh(actionspace_low, actionspace_high)
-        print(layers)
+        self.clamp_activation = ClampTanh(actionspace_low, actionspace_high)
         self.layers = nn.ModuleList([nn.Linear(dim_in, dim_out) for dim_in, dim_out in zip(layers[:-1], layers[1:])])
         self.use_batch_norm = batch_norm
         self.batch_norms = nn.ModuleList([nn.BatchNorm1d(dim_out) for dim_out in layers[1:-1]])
@@ -71,10 +71,5 @@ class ActorNetwork(nn.Module):
             output = self.activations[i](output)
             if self.use_batch_norm:
                 output = self.batch_norms[i](output)
-        output = self.clampactivation(self.layers[-1](output))
+        output = self.clamp_activation(self.layers[-1](output))
         return output
-
-
-
-
-    

@@ -1,5 +1,5 @@
-import numpy
 import torch
+
 
 def create_tens(input_dim, weight):
     """
@@ -10,6 +10,7 @@ def create_tens(input_dim, weight):
     return: tensor of size input_dim with weights under uniform distribution
     """
     return torch.zeros(input_dim, dtype=torch.float).uniform_(-weight, weight)
+
 
 def validate_config(config, layout):
     """

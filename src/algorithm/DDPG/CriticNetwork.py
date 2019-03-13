@@ -2,13 +2,21 @@ import numpy as np
 import torch
 from torch import nn
 
-from src.util import create_tens
+from src.utility.util import create_tens
+
 
 class CriticNetwork(nn.Module):
 
     def __init__(self, layers, activations=None, batch_norm=True, final_w=0.003):
+        """
+        Critic Network for ddpg algorithm as specified in the paper (link in DDPG class)
+        :param layers: numeric list of layers that will be used in this network
+        :param activations: list of activation functions that fullfill the length of all layers available
+        :param batch_norm: either to use or use not batch norm for this network
+        :param final_w: weight initialization for the output layer
+        """
         super(CriticNetwork, self).__init__()
-        if activations == None:
+        if activations is None:
             self.activations = [nn.ReLU6()] * (len(layers)-1)
         else:
             self.activations = activations
