@@ -37,6 +37,7 @@ This guide assumes you are working under Ubuntu 16.04
 5. Check that everything works correctly by running the code snippet
    from the [example readme](src/example/Readme.md).
 
+
 ##Getting started
 
 You have the choice between training or doing trials of an specified algorithm of our [algorithms](src/algorithm/Readme.md).
@@ -48,6 +49,7 @@ Generally we have specified two different commands
 
         python main.py YOUR_ALGORITHM {sim/rr} train hyperparameters outdir
 2. trial
+
         python main.py YOUR_ALGORITHM {sim/rr} trial hyperparameters
 
 where you always can choose between `{sim/rr}` the simulated environment `sim` or the real environment `rr`.
