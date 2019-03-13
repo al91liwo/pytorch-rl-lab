@@ -34,9 +34,9 @@ def train(run_configs, algorithm, outdir, mode):
 
     for conf in algorithm_parser.run_configs:
 
-        algorithm = algorithm_class(conf)
-
         run_out_dir = os.path.join(outdir, "{}_{}".format(conf["run_id"], conf["env"]))
+        conf["dirname"] = run_out_dir        
+        algorithm = algorithm_class(conf)
 
         if not os.path.exists(run_out_dir):
             os.makedirs(run_out_dir)

@@ -6,6 +6,7 @@ import matplotlib.pyplot as plt
 from src.utility.util import validate_config
 # import the developers algorithm here
 from src.algorithm.DDPG.DDPG import DDPG
+import os.path
 
 
 def layout():
@@ -17,6 +18,7 @@ def layout():
         #every layout needs a run_id param
         "run_id": 0,
         "env": 0,
+        "dirname": "out",
         "action_space_limits": ([-10.], [10.]),
         "buffer_size": 10000,
         "batch_size": 64,
@@ -50,7 +52,7 @@ def instance_from_config(config):
     validate_config(config, layout_dict)
     print(config)
     for key in config:
-        if not (key == "run_id" or key == "env"):
+        if not (key == "run_id" or key == "env" or key == "dirname"):
             config[key] = ast.literal_eval(config[key])
     # merging config into layout, EVERY layout needs a "run_id" variable
     layout_dict.update(config)
@@ -60,7 +62,7 @@ def instance_from_config(config):
 
     env = gym.make(layout_dict["env"])
 
-    return DDPG(env=env, action_space_limits=layout_dict["action_space_limits"],
+    return DDPG(env=env, action_space_limits=layout_dict["action_space_limits"], dirname=layout_dict["dirname"],
                 buffer_size=layout_dict["buffer_size"], batch_size=layout_dict["batch_size"],
                 is_quanser_env=layout_dict["is_quanser_env"], gamma=layout_dict["gamma"],
                 tau=layout_dict["tau"], steps=layout_dict["steps"], warmup_samples=layout_dict["warmup_samples"],
@@ -78,6 +80,8 @@ def result_handler(result, outdir):
     :param outdir: directory you can use to do whatever with (e.g. save plot into directory), for every training session
     there will be a new directory given
     """
+    with open(os.path.join(outdir, 'rewarddata'), 'w') as fout:
+        fout.write(','.join([str(r) for r in result]))
 
     plt.xlabel("episode")
     plt.ylabel("reward")
