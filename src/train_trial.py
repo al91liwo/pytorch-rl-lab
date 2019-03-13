@@ -36,7 +36,7 @@ def train(run_configs, algorithm, outdir, mode):
 
         algorithm = algorithm_class(conf)
 
-        run_out_dir = os.path.join(outdir, "{}_{}".format(conf["run_id"], algorithm.env))
+        run_out_dir = os.path.join(outdir, "{}_{}".format(conf["run_id"], conf["env"]))
 
         if not os.path.exists(run_out_dir):
             os.makedirs(run_out_dir)
@@ -46,10 +46,10 @@ def train(run_configs, algorithm, outdir, mode):
         # so you remember which parameters you used before :)
         write_config(conf, os.path.join(run_out_dir, "parameters.csv"))
 
-        if(mode == 'rr'):
+        if mode == 'rr':
             # every developer decides for himself what he wants to do with his training result (whatever this is)
             return_train = algorithm.train_rr()
-        if(mode == 'sim'):
+        if mode == 'sim':
             return_train = algorithm.train_sim()
 
         algorithm_parser.handle_result(return_train, run_out_dir)
