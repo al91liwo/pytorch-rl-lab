@@ -15,6 +15,7 @@ class DDPG:
     def __init__(self, env, action_space_limits, dirname="out", buffer_size=10000, batch_size=64, is_quanser_env=True,
                  gamma=.99, tau=1e-2, steps=100000, warmup_samples=1000, noise_decay=0.9,
                  transform=lambda x: x, actor_lr=1e-3, critic_lr=1e-3, lr_decay=1.0, lr_min=1.e-7, trial_horizon=5000,
+                 batch_norm=True,
                  actor_hidden_layers=[10, 10, 10], critic_hidden_layers=[10, 10, 10], device="cpu"):
         """
         DDPG algorithm implementation as in TODO: link
@@ -73,7 +74,8 @@ class DDPG:
         self.critic_hidden_layers = critic_hidden_layers
         self.actor_network = ActorNetwork([self.state_dim, *self.actor_hidden_layers, self.action_dim],
                                           torch.tensor(self.env_low[0], device=self.device, dtype=torch.float),
-                                          torch.tensor(self.env_high[0], device=self.device, dtype=torch.float)).to(self.device)
+                                          torch.tensor(self.env_high[0], device=self.device, dtype=torch.float),
+                                          batch_norm=batch_norm).to(self.device)
         self.critic_network = CriticNetwork([self.state_dim + self.action_dim, *self.critic_hidden_layers, 1]).to(self.device)
         self.actor_target = copy.deepcopy(self.actor_network).to(self.device)
         self.critic_target = copy.deepcopy(self.critic_network).to(self.device)
@@ -312,19 +314,23 @@ class DDPG:
         :return: reward trajectory as a list
         """
         rew = []
-
+        total_reward = 0
         for step in range(episodes):
             done = False
             obs = self.env.reset()
+
             total_reward = 0
+            i = 0
             while not done:
                 state = obs
                 action = self.forwardActorNetwork(self.actor_network, state)
                 obs, reward, done, _ = self.env.step(action)
+                done = done or i >= self.trial_horizon - 1
                 total_reward += reward
+                i += 1
 
             rew.append(total_reward)
-        return reward
+        return rew
 
     def trial_rr(self, episodes):
         """

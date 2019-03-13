@@ -1,10 +1,11 @@
 import gym
 import ast
+import os
+import matplotlib.pyplot as plt
 # this is the validate function to validate any config under the developers layout constraint
 from src.utility.util import validate_config
 # import the developers algorithm here
 from src.algorithm.DDPG.DDPG import DDPG
-
 
 
 def layout():
@@ -21,6 +22,7 @@ def layout():
         "batch_size": 64,
         "is_quanser_env": True,
         "gamma": .99,
+        "batch_norm": True,
         "tau": 1e-2,
         "steps": 100000,
         "warmup_samples": 1000,
@@ -46,13 +48,14 @@ def instance_from_config(config):
     """
     layout_dict = layout()
     validate_config(config, layout_dict)
+    print(config)
     for key in config:
         if not (key == "run_id" or key == "env"):
             config[key] = ast.literal_eval(config[key])
     # merging config into layout, EVERY layout needs a "run_id" variable
     layout_dict.update(config)
 
-    if not "run_id" in layout_dict.keys():
+    if "run_id" not in layout_dict.keys():
         raise Exception('Every config needs a "run_id"')
 
     env = gym.make(layout_dict["env"])
@@ -62,10 +65,11 @@ def instance_from_config(config):
                 is_quanser_env=layout_dict["is_quanser_env"], gamma=layout_dict["gamma"],
                 tau=layout_dict["tau"], steps=layout_dict["steps"], warmup_samples=layout_dict["warmup_samples"],
                 noise_decay=layout_dict["noise_decay"], transform=layout_dict["transform"],
-                actor_lr=layout_dict["actor_lr"], critic_lr=layout_dict["critic_lr"],
+                actor_lr=layout_dict["actor_lr"], critic_lr=layout_dict["critic_lr"], batch_norm=layout_dict["batch_norm"],
                 lr_decay=layout_dict["lr_decay"], lr_min=layout_dict["lr_min"],
                 trial_horizon=layout_dict["trial_horizon"], actor_hidden_layers=layout_dict["actor_hidden_layers"],
                 critic_hidden_layers=layout_dict["critic_hidden_layers"], device=layout_dict["device"])
+
 
 def result_handler(result, outdir):
     """
@@ -74,5 +78,12 @@ def result_handler(result, outdir):
     :param outdir: directory you can use to do whatever with (e.g. save plot into directory), for every training session
     there will be a new directory given
     """
+
+    plt.xlabel("episode")
+    plt.ylabel("reward")
+    plt.plot(result)
+    plt.savefig(os.path.join(outdir, "rewardplot.png"))
+    print(result)
+
 
 

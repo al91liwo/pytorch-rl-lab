@@ -1,6 +1,6 @@
-#config
+# config
 
-Every algorithm has his one folder in this directory.
+Every algorithm has its own folder in this directory.
 
 ### adding your own algorithm to this repository
 

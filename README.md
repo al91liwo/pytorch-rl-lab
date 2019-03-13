@@ -1,11 +1,11 @@
-# ddpg-implementation
-DDPG-implementation of Group 06 Frederik Wegner and Alexander Lind
+# pytorch-rl-lab
+DDPG and MPC implementation of Group 06 Frederik Wegner and Alexander Lind
 
 ## Installation Guide
 
 This guide assumes you are working under Ubuntu 16.04
 
-1. Make sure you installed all dependencies in the dependencies.yaml.
+1. Make sure you installed all dependencies of the dependencies.yaml.
    Create a virtual environment, activate it, and update it.
    You can also use an Anaconda virtual environment.
 
@@ -18,9 +18,9 @@ This guide assumes you are working under Ubuntu 16.04
 
 2. Clone this repository into some folder to use the quanser_environment
 
-        git clone --recursive git@github.com:al91liwo/ddpg-implementation.git
+        git clone --recursive git@github.com:al91liwo/pytorch-rl-lab.git
             or
-        git clone --recursive https://github.com/al91liwo/ddpg-implementation.git
+        git clone --recursive https://github.com/al91liwo/pytorch-rl-lab.git
 
 3. Make sure you have Python >= 3.5.3 on your system. If that is not the case,
    install Python3.6
@@ -38,8 +38,8 @@ This guide assumes you are working under Ubuntu 16.04
         pip3 install -e .
 
 5. Check that everything works correctly by running the code snippet
-   from the [example readme](src/example/Readme.md).
-
+   from the [example quanser_environment](https://git.ias.informatik.tu-darmstadt.de/quanser/clients/blob/master/Readme.md) and [pytorch-rl-lab example](/src/config/example/Readme.md).
+   
 
 ## Getting started
 

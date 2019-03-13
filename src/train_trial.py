@@ -36,15 +36,15 @@ def train(run_configs, algorithm, outdir, mode):
 
         algorithm = algorithm_class(conf)
 
-        run_outdir = os.path.join(outdir, "{}_{}".format(conf["run_id"], algorithm.env))
+        run_out_dir = os.path.join(outdir, "{}_{}".format(conf["run_id"], algorithm.env))
 
-        if not os.path.exists(run_outdir):
-            os.makedirs(run_outdir)
+        if not os.path.exists(run_out_dir):
+            os.makedirs(run_out_dir)
         else:
-            raise Exception("output directory '/{}' should not exist or be empty.".format(run_outdir))
+            raise Exception("output directory '/{}' should not exist or be empty.".format(run_out_dir))
 
         # so you remember which parameters you used before :)
-        write_config(conf, os.path.join(run_outdir, "parameters.csv"))
+        write_config(conf, os.path.join(run_out_dir, "parameters.csv"))
 
         if(mode == 'rr'):
             # every developer decides for himself what he wants to do with his training result (whatever this is)
@@ -52,8 +52,8 @@ def train(run_configs, algorithm, outdir, mode):
         if(mode == 'sim'):
             return_train = algorithm.train_sim()
 
+        algorithm_parser.handle_result(return_train, run_out_dir)
 
-        algorithm_parser.handle_result(return_train, run_outdir)
 
 def trial(algorithm, policy, outdir, mode, episodes):
     """
@@ -65,6 +65,11 @@ def trial(algorithm, policy, outdir, mode, episodes):
     :param episodes: number of episodes your policy will be tested
     :return:
     """
+    if not os.path.exists(outdir):
+        os.makedirs(outdir)
+    else:
+        print("Folder {} will be overwritten with possible results".format(outdir))
+
     run_configs = policy+"/parameters.csv"
     algorithm_parser = AlgorithmParser(run_configs=run_configs, algorithm= algorithm)
 
@@ -79,10 +84,10 @@ def trial(algorithm, policy, outdir, mode, episodes):
     # this will always have a side-effect on the intern policy the algorithm is using
     algorithm.load_model(policy+"/policy")
 
-    if(mode == 'rr'):
+    if mode == 'rr':
         # every developer decides for himself what he wants to do with his training result (whatever this is)
         return_trial = algorithm.trial_rr(episodes)
-    if(mode == 'sim'):
+    if mode == 'sim':
         return_trial = algorithm.trial_sim(episodes)
 
     algorithm_parser.handle_result(result=return_trial, outdir=outdir)

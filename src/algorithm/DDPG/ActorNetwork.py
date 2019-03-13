@@ -30,7 +30,8 @@ class ClampTanh(nn.Module):
 
 class ActorNetwork(nn.Module):
     
-    def __init__(self, layers, actionspace_low, actionspace_high, activations=None, batch_norm=True, final_w=0.003):
+    def __init__(self, layers, actionspace_low, actionspace_high, activations=None, final_w=0.003,
+                 batch_norm=True):
         """
         Actor Network for ddpg algorithm as specified in the paper (link in DDPG class)
         :param layers: numeric list of layers that will be used in this network
@@ -49,8 +50,10 @@ class ActorNetwork(nn.Module):
 
         self.clamp_activation = ClampTanh(actionspace_low, actionspace_high)
         self.layers = nn.ModuleList([nn.Linear(dim_in, dim_out) for dim_in, dim_out in zip(layers[:-1], layers[1:])])
+
         self.use_batch_norm = batch_norm
-        self.batch_norms = nn.ModuleList([nn.BatchNorm1d(dim_out) for dim_out in layers[1:-1]])
+        if batch_norm:
+            self.batch_norms = nn.ModuleList([nn.BatchNorm1d(dim_out) for dim_out in layers[1:-1]])
 
         # initialize weights
         for i in range(len(self.layers)-2):
