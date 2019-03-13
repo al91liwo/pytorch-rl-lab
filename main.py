@@ -47,14 +47,11 @@ def main():
 
     args = parser.parse_args()
 
-    print(sys.argv[2])
-
-
-    if(sys.argv[3] == 'train'):
+    if sys.argv[3] == 'train':
         train(run_configs=args.hyperparameters, algorithm=args.algorithm,
               outdir=args.outdir, mode=sys.argv[2])
         return
-    if(sys.argv[3] =='trial'):
+    if sys.argv[3] =='trial':
         trial(algorithm=args.algorithm, policy=args.policy, mode=sys.argv[2],
              episodes=args.episodes, outdir=args.outdir)
         return

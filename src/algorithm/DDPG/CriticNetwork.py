@@ -32,7 +32,7 @@ class CriticNetwork(nn.Module):
             output = self.layers[i](output)
             output = self.activations[i](output)
             if self.use_batch_norm:
-                output = self.batch_norms[i-1](output)
+                output = self.batch_norms[i](output)
 
         output = self.layers[-1](output)
         return output

@@ -71,4 +71,4 @@ Execute this command to obtain results:
 
 `out` specifies the directory where the output result will be saved (this is strictly specified by the developer) for more information take a look at [config readme](src/config/Readme.md)
 
-`train` 
+`train` the command to train the specified algorithm under given hyperparameters (the parameters.csv) file

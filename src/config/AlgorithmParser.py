@@ -19,7 +19,7 @@ def getAlgorithmConfigLayout(algorithm):
 
 class AlgorithmParser:
 
-    def __init__(self, run_configs, episodes,  algorithm="DDPG"):
+    def __init__(self, run_configs, episodes=0, algorithm="DDPG"):
         """
         Parse the config and starts all training or trial sessions for given configuration
         :param run_configs: .csv file with all training sessions (see Documentation for more information)
