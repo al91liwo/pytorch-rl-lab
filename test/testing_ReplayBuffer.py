@@ -1,10 +1,8 @@
-import sys
-
-sys.path.append('../')
-
 import random
-
 from src import ReplayBuffer as rpb
+
+
+
 
 
 def ran_trans():
@@ -15,7 +13,8 @@ def ran_trans():
     a = random.randint(1,101)
     r = - random.randint(1,101)
     s_2 = random.randint(1,101)
-    return (s, a, r, s_2)
+    return s, a, r, s_2
+
 
 buffer0 = rpb.ReplayBuffer(5)
 transitions = [ran_trans() for i in range(10)]

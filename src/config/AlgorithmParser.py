@@ -4,6 +4,12 @@ import src.algorithm
 import src.config
 
 def getAlgorithmConfigLayout(algorithm):
+    """
+    This right now specifies all available algorithms in this repository,
+    will be restructured in the future
+    :param algorithm: usable algorithms as a string (follow conventions used)
+    :return: config getter of specified algorithm
+    """
     configs = {
         "ddpg": "DDPG",
         "mpc": "MPC"
@@ -11,15 +17,15 @@ def getAlgorithmConfigLayout(algorithm):
     return configs.get(algorithm, "INVALIDATED")
 
 
-class ConfigParser:
+class AlgorithmParser:
 
-    def __init__(self, run_configs, algorithm="DDPG"):
+    def __init__(self, run_configs, episodes,  algorithm="DDPG"):
         """
-        Parse the config and starts all training sessions for given configuration
+        Parse the config and starts all training or trial sessions for given configuration
         :param run_configs: .csv file with all training sessions (see Documentation for more information)
         :param algorithm: algorithm name specified by the developers creating rl-algorithms
         """
-        print(run_configs)
+
         self.algorithm = getAlgorithmConfigLayout(algorithm)
         self.algorithm_directory = "src.algorithm."+self.algorithm+"."+self.algorithm
         self.layout_directory = "src.config."+self.algorithm+".layout"

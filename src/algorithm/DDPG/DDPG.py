@@ -1,5 +1,6 @@
 import copy
 import torch
+from quanser_robots import GentlyTerminating
 from torch import nn
 import matplotlib.pyplot as plt
 import numpy as np
@@ -189,8 +190,6 @@ class DDPG:
             os.makedirs(self.dirname)
         torch.save(self.actor_target.state_dict(), os.path.join(self.dirname, "actortarget_{}".format(reward)))
         torch.save(self.critic_target.state_dict(), os.path.join(self.dirname, "critictarget_{}".format(reward)))
-        #torch.save(self.critic_optim.state_dict(), os.path.join(self.dirname, "criticoptim"))
-        #torch.save(self.actor_optim.state_dict(), os.path.join(self.dirname, "actoroptim"))
 
     def update(self):
         """
@@ -223,12 +222,14 @@ class DDPG:
         print(statusprint.format(step, self.total_steps, total_reward, reward_record, self.replayBuffer.count, self.replayBuffer.buffer_size, self.actor_lr_scheduler.get_lr()[0], self.critic_lr_scheduler.get_lr()[0]))
   
 
-    def train(self):
+
+    def train_rr(self):
         """
-        A training session w.r.t. to training parameters
-        return: the best reward achieved during this training session
+        A training session w.r.t. training parameters in a real environment
+        :return: total reward for this training session
         """
-        print("Training started...")
+        self.env = GentlyTerminating(self.env)
+        print("Training in real environment started...")
         reward_record = 0
         total_reward = 0
         episode = 0
@@ -237,9 +238,120 @@ class DDPG:
         while step < self.total_steps:
             state = self.transformObservation(self.env.reset())
             done = False
-    
+
             self.info_print(step, total_reward, reward_record)
-            
+
+            total_reward = 0
+            i = 0
+            while not done:
+
+                action = self.action_selection(
+                    torch.tensor(state, dtype=torch.float32, device=self.device).unsqueeze(0)).squeeze()
+
+                action = self.noise_torch.sample((self.action_dim,)) * self.noise_decay ** episode + action
+
+                action = torch.clamp(action, min=self.env_low[0], max=self.env_high[0])
+
+                action = action.to("cpu").detach().numpy()
+                next_state, reward, done, _ = self.env.step(action)
+                done = done or i >= self.trial_horizon
+                next_state = self.transformObservation(next_state)
+
+                total_reward += reward
+
+                step += 1
+                i = i + 1
+
+                self.replayBuffer.add(state, action, reward, next_state, done)
+                state = next_state
+            # we do this at end of every episode because it takes to much time between episodes
+            if self.replayBuffer.count >= self.n_batches:
+                actor_loss, critic_loss = self.update()
+
+                self.update_actor(actor_loss)
+                self.update_critic(critic_loss)
+
+                self.soft_update(self.actor_network, self.actor_target)
+                self.soft_update(self.critic_network, self.critic_target)
+
+            if self.replayBuffer.count >= self.n_batches:
+                if self.critic_lr_scheduler.get_lr()[0] > self.lr_min:
+                    self.critic_lr_scheduler.step()
+                if self.actor_lr_scheduler.get_lr()[0] > self.lr_min:
+                    self.actor_lr_scheduler.step()
+                episode += 1
+                # if out actor is really good, test target actor. If the target actor is good too, save it.
+                if reward_record < total_reward and total_reward > 50:
+                    trial_average_reward = self.trial()
+                    if trial_average_reward > reward_record:
+                        print("New record")
+                        reward_record = trial_average_reward
+                        self.save_model(trial_average_reward)
+                rew.append(total_reward)
+
+
+        # test & save final model
+        trial_average_reward = self.trial()
+        self.save_model("{:.2f}_final".format(trial_average_reward))
+
+        return rew
+
+    def load_model(self, dirname):
+        """
+        Setting actor network to given model
+        :param dirname: specified policy that will be loaded
+        :return:
+        """
+        if not os.path.exists(os.path.join(dirname)):
+            print("no model checkoutpoint found")
+            return
+        self.actor_network.load_state_dict(torch.load(os.path.join(dirname)))
+
+    def trial_sim(self, episodes):
+        """
+        A trial with given episodes in the simulated environment
+        :return: reward trajectory as a list
+        """
+        rew = []
+
+        for step in range(episodes):
+            done = False
+            obs = self.env.reset()
+            total_reward = 0
+            while not done:
+                state = obs
+                action = self.forwardActorNetwork(self.actor_network, state)
+                obs, reward, done, _ = self.env.step(action)
+                total_reward += reward
+
+            rew.append(total_reward)
+        return reward
+
+    def trial_rr(self, episodes):
+        """
+        A trial with given episodes in the real environment
+        :return: reward trajectory as a list
+        """
+        self.env = GentlyTerminating(self.env)
+        return self.trial_sim(episodes)
+
+    def train_sim(self):
+        """
+        A training session w.r.t. training parameters in a simulated environment
+        return: total reward achieved during this training session
+        """
+        print("Training in simulation started...")
+        reward_record = 0
+        total_reward = 0
+        episode = 0
+        rew = []
+        step = 0
+        while step < self.total_steps:
+            state = self.transformObservation(self.env.reset())
+            done = False
+
+            self.info_print(step, total_reward, reward_record)
+
             total_reward = 0
             i = 0
             while not done:
@@ -255,9 +367,9 @@ class DDPG:
                 next_state, reward, done, _ = self.env.step(action)
                 done = done or i >= self.trial_horizon
                 next_state = self.transformObservation(next_state)
-    
+
                 total_reward += reward
-            
+
                 self.replayBuffer.add(state, action, reward, next_state, done)
                 state = next_state
                 if self.replayBuffer.count >= self.n_batches:
@@ -287,19 +399,8 @@ class DDPG:
                         self.save_model(trial_average_reward)
                 rew.append(total_reward)
 
-        plt.xlabel("episode")
-        plt.ylabel("reward")
-        plt.plot(rew)
-        print(reward_record)
-        plt.savefig(os.path.join(self.dirname, "rewardplot.png"))
-        plt.clr()
-        
-        # write plot data to a file
-        with open(os.path.join(self.dirname, "rewarddata"), "w+") as f:
-            f.write(','.join([str(reward) for reward in rew]))
-
         # test & save final model
         trial_average_reward = self.trial()
         self.save_model("{:.2f}_final".format(trial_average_reward))
 
-        return reward_record
+        return rew
