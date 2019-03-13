@@ -18,8 +18,9 @@ This guide assumes you are working under Ubuntu 16.04
 
 2. Clone this repository into some folder to use the quanser_environment
 
-        cd ~; mkdir tmp; cd tmp
-        git clone https://git.ias.informatik.tu-darmstadt.de/quanser/clients.git
+        git clone --recursive git@github.com:al91liwo/ddpg-implementation.git
+            or
+        git clone --recursive https://github.com/al91liwo/ddpg-implementation.git
 
 3. Make sure you have Python >= 3.5.3 on your system. If that is not the case,
    install Python3.6
@@ -60,9 +61,9 @@ where you always can choose between `{sim/rr}` the simulated environment `sim` o
 
 For example you can train the algorithm [DDPG](src/algorithm/DDPG/Readme.md) with given hyperparameters as a .csv file. For example [parameters.csv](parameters.csv)
 
-| run_id      | env     | steps  | batch_size | buffer_size | warmup_samples | actor_lr | critic_lr | actor_hidden_layers | critic_hidden_layers | tau  | noise_decay | lr_decay | lr_min     | 
-|-------------|---------|--------|------------|-------------|----------------|----------|-----------|---------------------|----------------------|------|-------------|----------|------------| 
-| TestingQube | Qube-v0 | 100000 | 64         | 1000000     | 100            | 0.001    | 0.001     | [300,200]           | [300,200]            | 0.01 | 0.99        | 1.       | 0.00000001 | 
+| run_id        | env                  | steps  | batch_size | buffer_size | warmup_samples | actor_lr | critic_lr | actor_hidden_layers | critic_hidden_layers | tau  | noise_decay | lr_decay | lr_min     | 
+|---------------|----------------------|--------|------------|-------------|----------------|----------|-----------|---------------------|----------------------|------|-------------|----------|------------| 
+| CartpoleTrial | CartpoleStabShort-v0 | 100000 | 64         | 1000000     | 100            | 0.001    | 0.001     | [100,150]           | [100,150]            | 0.01 | 0.99        | 1.       | 0.00000001 | 
 
 Execute this command to obtain results:
 
