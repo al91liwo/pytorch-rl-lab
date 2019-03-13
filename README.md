@@ -44,8 +44,6 @@ It is possbile to train or test the algorithms on the real environment ('rr') or
 
 For example you can train the algorithm ddpg with given a given hyperparameters file and a given output directory.
 
-parameters.csv:
-Markdown | Less | Pretty
---- | --- | ---
-*Still* | `renders` | **nicely**
-1 | 2 | 3
+| run_id      | env     | steps  | batch_size | buffer_size | warmup_samples | actor_lr | critic_lr | actor_hidden_layers | critic_hidden_layers | tau  | noise_decay | lr_decay | lr_min     | 
+|-------------|---------|--------|------------|-------------|----------------|----------|-----------|---------------------|----------------------|------|-------------|----------|------------| 
+| TestingQube | Qube-v0 | 100000 | 64         | 1000000     | 100            | 0.001    | 0.001     | [300,200]           | [300,200]            | 0.01 | 0.99        | 1.       | 0.00000001 | 
