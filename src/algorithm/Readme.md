@@ -1,3 +1,3 @@
 # algorithms
 
-You can specify your algorithms here as [guided](/src/Readme.md)
+Every algorithm has its own folder as in [guided](/src/Readme.md) described.
