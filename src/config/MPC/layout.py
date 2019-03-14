@@ -74,7 +74,6 @@ def instance_from_config(config):
     state_dim = env.observation_space.shape[0]
     action_dim = env.action_space.shape[0]
 
-
     if layout_dict["model"] == "pnn":
         model = ProbabilisticEnvironmentModel(state_dim, action_dim, layout_dict["layers"], [],
                                               predicts_delta=layout_dict["predicts_delta"],

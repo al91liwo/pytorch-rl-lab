@@ -2,9 +2,11 @@ import torch.nn
 import torch.distributions as distributions
 import numpy as np
 import time
-from model import perfect_models
+from src.algorithm.MPC.model import perfect_models
 from matplotlib import pyplot as plt
-from util import angle_from_sincos, angle_normalize
+from src.utility.util import angle_from_sincos
+from src.utility.util import angle_normalize
+
 
 class ModelEval():
     """

@@ -4,7 +4,9 @@ from src.algorithm.MPC.diagnose import TimeDiagnoser
 
 control_time_diagnoser = TimeDiagnoser("average_cem_time")
 
-def cem_optimize(init_mean, cost_func, init_variance=1., samples=400, precision=1.0e-3, steps=5, nelite=40, alpha=0.1, contraint_mean=None, constraint_variance=(-999999, 999999), device="cpu"):
+
+def cem_optimize(init_mean, cost_func, init_variance=1., samples=400, precision=1.0e-3, steps=5, nelite=40, alpha=0.1,
+                 contraint_mean=None, constraint_variance=(-999999, 999999), device="cpu"):
     """
     cem_optimize minimizes cost_function by iteratively sampling values around the current mean with a set variance.
     Of the sampled values the mean of the nelite number of samples with the lowest cost is the new mean for the next iteration.
@@ -20,6 +22,7 @@ def cem_optimize(init_mean, cost_func, init_variance=1., samples=400, precision=
     :param alpha: softupdate, weight for old mean and variance
     :param contraint_mean: tuple with minimum and maximum mean
     :param constraint_variance: tuple with minumum and maximum variance
+    :param device: either gpu or cpu (torch tensor configuration)
     :return:
     """
     control_time_diagnoser.start_log("average_cem_time")
@@ -53,7 +56,7 @@ def cem_optimize(init_mean, cost_func, init_variance=1., samples=400, precision=
     return mean
 
 
-class FIFOBuffer():
+class FIFOBuffer:
 
     def __init__(self, length):
         self.length = length
@@ -75,7 +78,7 @@ def clip(x, min, max):
     return torch.max(torch.min(x, max), min)
 
 
-class TrajectoryController():
+class TrajectoryController:
 
     def __init__(self, model, reward, action_dim, action_min, action_max, trajectory_len, history_len, cost_function, device, cem_samples=400, nelite=0):
         """
