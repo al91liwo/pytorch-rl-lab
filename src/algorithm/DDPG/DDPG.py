@@ -77,7 +77,7 @@ class DDPG:
                                           torch.tensor(self.env_low[0], device=self.device, dtype=torch.float),
                                           torch.tensor(self.env_high[0], device=self.device, dtype=torch.float),
                                           batch_norm=batch_norm).to(self.device)
-        self.critic_network = CriticNetwork([self.state_dim + self.action_dim, *self.critic_hidden_layers, 1]).to(self.device)
+        self.critic_network = CriticNetwork([self.state_dim + self.action_dim, *self.critic_hidden_layers, 1], batch_norm=batch_norm).to(self.device)
         self.actor_target = copy.deepcopy(self.actor_network).to(self.device)
         self.critic_target = copy.deepcopy(self.critic_network).to(self.device)
         
