@@ -5,10 +5,9 @@ import time
 from src.algorithm.MPC.model import perfect_models
 from matplotlib import pyplot as plt
 from src.utility.util import angle_from_sincos
-from src.utility.util import angle_normalize
 
 
-class ModelEval():
+class ModelEval:
     """
     Uses reference dynamics and reward models to evaluate the performance of a model
     """
@@ -87,7 +86,7 @@ class ModelEval():
             ax.set_title(title)
         plt.show()
 
-class TimeDiagnoser():
+class TimeDiagnoser:
     """
     TimeDiagnoser can be used to analyze code performance by making time logging easy.
     """

@@ -91,7 +91,7 @@ def instance_from_config(config):
     if layout_dict["model"] == "perfect":
         trainer = IdleTrainer()
     else:
-        trainer = ModelTrainer(model, lossFunc=loss, weight_decay=layout_dict["weight_decay"], epochs=layout_dict["epoch"], lr=layout_dict["lr"], lr_decay=layout_dict["lr_deacy"], lr_min=layout_dict["lr_min"], batch_size=layout_dict["batch_size"], logging=layout_dict["logging"], plotting=False)
+        trainer = ModelTrainer(model, loss_func=loss, weight_decay=layout_dict["weight_decay"], epochs=layout_dict["epoch"], lr=layout_dict["lr"], lr_decay=layout_dict["lr_deacy"], lr_min=layout_dict["lr_min"], batch_size=layout_dict["batch_size"], logging=layout_dict["logging"], plotting=False)
 
     if not layout_dict["env"] in rewards:
         raise NotImplementedError("A reward function for the environment {} does not exist!".format(layout["env"]))

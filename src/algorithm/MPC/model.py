@@ -1,8 +1,9 @@
 import torch
 import torch.nn as nn
 import numpy as np
-from src.algorithm.MPC.util import angle_from_sincos, angle_normalize
+from src.utility.util import angle_from_sincos
 import matplotlib.pyplot as plt
+
 
 class Swish(torch.nn.Module):
     r"""Applies the element-wise function:
@@ -14,12 +15,12 @@ class Swish(torch.nn.Module):
         - Output: :math:`(N, *)`, same shape as the input
     Examples::
         >>> m = Swish()
-        >>> input = torch.randn(2)
-        >>> output = m(input)
+        >>> inp = torch.randn(2)
+        >>> output = m(inp)
     """
 
-    def forward(self, input):
-        return input * torch.sigmoid(input)
+    def forward(self, inp):
+        return inp * torch.sigmoid(inp)
 
 
 class NegLogLikelihood(nn.Module):
@@ -74,17 +75,17 @@ class EnvironmentModelSeparateReward(nn.Module):
         if catreward:
             return torch.cat((self.model_dynamics(x), self.model_reward(x)), dim=-1)
         else:
-            return (self.model_dynamics(x), self.model_reward(x))
-
+            return self.model_dynamics(x), self.model_reward(x)
 
     def propagate(self, state, action):
-        input = torch.cat((state, action), dim=-1) # use negative dim so we can input batches aswell as single values
-        output = self.forward(input)
+        inp = torch.cat((state, action), dim=-1)  # use negative dim so we can input batches aswell as single values
+        output = self.forward(inp)
         output = torch.squeeze(output)
         if output.dim() == 1:
             return output[:-1], output[-1]
         else:
-            return output[:,:-1], output[:,-1]
+            return output[:, :-1], output[:, -1]
+
 
 class EnvironmentModel(NN):
     """
@@ -115,7 +116,6 @@ class EnvironmentModel(NN):
             # in this case we obtain the next state by adding the delta to starting state
             output = state + output
         return output
-
 
 
 class ProbabilisticEnvironmentModel(NN):
@@ -161,22 +161,23 @@ class ProbabilisticEnvironmentModel(NN):
         return output
 
     def propagate_dist(self, state, action):
-        input = torch.cat((state, action), dim=-1)  # use negative dim so we can input batches aswell as single values
-        output = self.forward(input)
+        inp = torch.cat((state, action), dim=-1)  # use negative dim so we can input batches aswell as single values
+        output = self.forward(inp)
         # probabilistic NN outputs mean var
         mean, var = torch.chunk(output, 2, dim=-1)
         # clip variance
-        logvar = torch.log(var)
-        logvar = self.max_logvar - self.softplus(self.max_logvar - logvar)
-        logvar = self.min_logvar + self.softplus(logvar - self.min_logvar)
-        var = torch.exp(logvar)
+        log_var = torch.log(var)
+        log_var = self.max_logvar - self.softplus(self.max_logvar - log_var)
+        log_var = self.min_logvar + self.softplus(log_var - self.min_logvar)
+        var = torch.exp(log_var)
         # create a distribution for each pair of mean and variance
         if self.predicts_delta:
             # in this case we obtain the next state by adding the delta to starting state
             mean = state + mean
         return mean, var
 
-class EnsembleEnvironmentModel():
+
+class EnsembleEnvironmentModel:
     """
     Multiple models combined into an ensemble.
     The input is propagated with each model.
@@ -207,10 +208,11 @@ class ModelTrainer:
     ModelTrainer optimized the parameters of a model.
     """
 
-    def __init__(self, model, lossFunc=nn.MSELoss(), optimizer=torch.optim.Adam, weight_decay=0, lr=1e-2, lr_min=1e-5, lr_decay=1., batch_size=50, epochs=1, logging=False, plotting=False):
+    def __init__(self, model, loss_func=nn.MSELoss(), optimizer=torch.optim.Adam, weight_decay=0, lr=1e-2, lr_min=1e-5,
+                 lr_decay=1., batch_size=50, epochs=1, logging=False, plotting=False):
         """
         :param model: the model to optimize
-        :param lossFunc: the loss function that should be minimized
+        :param loss_func: the loss function that should be minimized
         :param optimizer: a function/constructor that returns a torch.optim optimizer
         :param weight_decay: a list or value specifying the weight decay for each layer
         :param lr: learn rate for the optimizer
@@ -222,7 +224,7 @@ class ModelTrainer:
         self.model = model
         self.logging = logging
         self.plotting = plotting
-        self.lossFunc = lossFunc
+        self.lossFunc = loss_func
         params = []
         for i, layer in enumerate(model.layers):
             param = {'params':layer.parameters()}
@@ -254,9 +256,9 @@ class ModelTrainer:
             epochs = self.epochs
 
         self.model.train()
-        mselossfunc = torch.nn.MSELoss()
+        mse_loss_func = torch.nn.MSELoss()
         losses = []
-        mselosses = []
+        mse_losses = []
 
         for e in range(epochs):
             if self.logging:
@@ -268,13 +270,13 @@ class ModelTrainer:
                 batch_pred = self.model(batch_in)
                 loss = self.lossFunc(batch_pred.float(), batch_t.float())
                 if self.model.probabilistic:
-                    mselosses.append(mselossfunc(torch.chunk(batch_pred, 2, dim=-1)[0], batch_t.float()).item())
+                    mse_losses.append(mse_loss_func(torch.chunk(batch_pred, 2, dim=-1)[0], batch_t.float()).item())
                 losses.append(loss.item())
                 self.optimizer.zero_grad()
                 loss.backward()
                 self.optimizer.step()
 
-        if not self.scheduler == None and self.scheduler.get_lr()[0] > self.lr_min:
+        if self.scheduler is not None and self.scheduler.get_lr()[0] > self.lr_min:
             self.scheduler.step()
             print("LR: ", self.scheduler.get_lr())
 
@@ -284,8 +286,9 @@ class ModelTrainer:
             plt.figure(figsize=(5,5))
             plt.plot(losses, "r-")
             if self.model.probabilistic:
-                plt.plot(mselosses, "b-")
+                plt.plot(mse_losses, "b-")
             plt.show()
+
 
 class EnsembleTrainer:
     """
@@ -294,30 +297,26 @@ class EnsembleTrainer:
 
     def __init__(self, ensemble, trainers):
         """
-        :param model: the model to optimize
-        :param lossFunc: the loss function that should be minimized
-        :param optimizer: a function/constructor that returns a torch.optim optimizer
-        :param lr: learn rate for the optimizer
-        :param lr_decay: learn rate decay for the optimizer
-        :param batch_size: the number of data points to evaluate the model on before changing parameters
+
+        :param ensemble:
+        :param trainers:
         """
         if not len(trainers) == len(ensemble.models):
             raise ValueError("As many trainers as models needed!")
         self.trainers = trainers
 
-    def train(self, inputs, targets, n=0):
+    def train(self, inputs, targets):
         """
         trains all models of the ensemble with the given inputs and targets.
         The individual models might be trained with different subsets of the data.
         :param inputs: the input data
         :param targets: target data
-        :param n: unused
         """
         for trainer in self.trainers:
             samples = np.random.uniform(0, len(inputs), size=len(inputs))
             trainer.train(inputs[samples], targets[samples])
 
-class IdleTrainer():
+class IdleTrainer:
     """
     This is a trainer for models that cannot be trained
     """
@@ -326,6 +325,7 @@ class IdleTrainer():
 
     def train(self, inputs, targets, epochs=-1):
         pass
+
 
 class PerfectDynamicsModelPendulum(nn.Module):
 
@@ -372,6 +372,7 @@ class PerfectDynamicsModelPendulum(nn.Module):
 
         def propagate(self, state, action):
             return self.forward(torch.cat((state, action), dim=-1))
+
 
 perfect_models = {
     "Pendulum-v0": PerfectDynamicsModelPendulum()

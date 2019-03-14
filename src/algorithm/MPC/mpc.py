@@ -1,9 +1,10 @@
 import numpy as np
 import torch
 import torch.distributions as distributions
-from diagnose import ModelEval
-from control import TrajectoryController, control_time_diagnoser
-from util import angle_from_sincos
+
+from src.algorithm.MPC.diagnose import ModelEval
+from src.algorithm.MPC.control import TrajectoryController
+from src.algorithm.MPC.control import control_time_diagnoser
 
 
 class MPC:
@@ -15,7 +16,8 @@ class MPC:
     first action of the best trajectory. After each trial, the model is trained using the new data.
     """
 
-    def __init__(self, env, reward, model, trainer, predict_horizon=20, warmup_trials=1, learning_trials=20, trial_horizon=1000, cem_samples=400, nelite=0, render=0, device="cpu", max_memory=1000000):
+    def __init__(self, env, reward, model, trainer, predict_horizon=20, warmup_trials=1, learning_trials=20,
+                 trial_horizon=1000, cem_samples=400, nelite=0, render=0, device="cpu", max_memory=1000000):
         """
         Creates a Model Predictive Controller
         :param env: an OpenAI Gym environment
@@ -50,7 +52,8 @@ class MPC:
         self.trajectory_controller = TrajectoryController(self.model, self.reward, self.action_space_dim,
                                                           self.action_space_min,
                                                           self.action_space_max, self.predict_horizon,
-                                                          self.predict_horizon, self._expected_reward, self.device, cem_samples=cem_samples, nelite=nelite)
+                                                          self.predict_horizon, self._expected_reward, self.device,
+                                                          cem_samples=cem_samples, nelite=nelite)
 
     def _expected_reward(self, action_trajectory):
         """
@@ -87,7 +90,6 @@ class MPC:
                 self.memory = self.memory[overflow:] # cut away from memory to make space for new samples
             self.memory = np.vstack((self.memory, samples))
 
-
     def _trial(self, controller, horizon=0, render=False):
         """
         Runs a trial on the environment. Renders the environment if self.render is True.
@@ -104,7 +106,7 @@ class MPC:
         samples = []
         cum_reward = 0
         t = 0
-        while(True):
+        while True:
             if render:
                 self.env.render()
             action = controller(torch.tensor(obs, device=self.device))
@@ -149,8 +151,8 @@ class MPC:
         :param n: number of actions to sample.
         :return: Sampled action. If n is 1, the action will no be packed in a list.
         """
-        if n <=0:
-            raise("number of samples as to be greater than 0")
+        if n <= 0:
+            raise Exception("number of samples as to be greater than 0")
         if n == 1:
             return self.action_space_uniform.sample().to(self.device)
         else:

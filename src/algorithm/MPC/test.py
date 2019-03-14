@@ -96,7 +96,7 @@ def test_probmodel(f, X_train, Y_train, trials):
     :return:
     """
     model = mdl.ProbabilisticEnvironmentModel(1, 0, [100,100,200], [], predicts_delta=False)
-    trainer = mdl.ModelTrainer(model, lossFunc=mdl.NegLogLikelihood(), epochs=5, lr=1.e-3, weight_decay=1e-4, batch_size=25, logging=True)
+    trainer = mdl.ModelTrainer(model, loss_func=mdl.NegLogLikelihood(), epochs=5, lr=1.e-3, weight_decay=1e-4, batch_size=25, logging=True)
 
     X = np.linspace(min(X_train)-1., max(X_train)+1., 400)
     Y = f(X)
