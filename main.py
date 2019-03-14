@@ -8,19 +8,19 @@ def main():
     parser = ArgumentParser("OpenAiGym_algorithm")
     parser.add_argument('algorithm', type=str,
                         help='algorithm specified in src/algorithm/')
-    subparsers = parser.add_subparsers(help='mode')
+    subparsers = parser.add_subparsers(help='choose between simulation or real environment mode')
 
     parser_rr = subparsers.add_parser('rr')
     parser_rr_subparsers = parser_rr.add_subparsers(help='choose between train or trial')
 
     parser_rr_train = parser_rr_subparsers.add_parser('train', help='train mode in real environment')
     parser_rr_train.add_argument('hyperparameters', type=str,
-                                 help='.csv folder with hyperparameters for specified algorithm')
+                                 help='.csv file with hyperparameters for specified algorithm')
     parser_rr_train.add_argument('outdir', type=str,
                                  help='output directory of your training data')
     parser_rr_trial = parser_rr_subparsers.add_parser('trial', help='trial mode in real environment')
     parser_rr_trial.add_argument('policy', type=str,
-                                 help='path to your policy')
+                                 help='path to your policy folder containing a policy and a parameters.csv')
     parser_rr_trial.add_argument('outdir', type=str,
                                  help='save your results in specified directory')
     parser_rr_trial.add_argument('episodes', type=int,
@@ -33,13 +33,13 @@ def main():
 
     parser_sim_train = parser_sim_subparsers.add_parser('train', help='train mode in simulated environment')
     parser_sim_train.add_argument('hyperparameters', type=str,
-                                 help='.csv folder with hyperparameters for specified algorithm')
+                                 help='.csv file with hyperparameters for specified algorithm')
     parser_sim_train.add_argument('outdir', type=str,
                                  help='output directory of your training data')
 
     parser_sim_trial = parser_sim_subparsers.add_parser('trial', help='trial mode in simulated environment')
     parser_sim_trial.add_argument('policy', type=str,
-                                 help='path to your policy')
+                                 help='path to your policy folder containing a policy and a parameters.csv')
     parser_sim_trial.add_argument('outdir', type=str,
                                  help='save your results in specified directory')
     parser_sim_trial.add_argument('episodes', type=int,

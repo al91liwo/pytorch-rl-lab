@@ -43,19 +43,44 @@ This guide assumes you are working under Ubuntu 16.04
 
 ## Getting started
 
-You have the choice between training or doing trials of an specified algorithm of our [algorithms](src/algorithm/Readme.md).
-It is possbile to train or test the algorithms on the real environment ('rr') or the simulated environment ('sim')
+You can always use the command line to start either a training or trial session with a given algorithm.
 
-Generally we have specified two different commands
+    python main.py -h
+With python main.py you can specify a algorithm to use. Right now you can use [ddpg](src/algorithm/DDPG/Readme.md) or [mpc](src/algorithm/MPC/Readme.md)
 
-1. training
+    positional arguments:
+    algorithm   algorithm specified in src/algorithm/
+    {rr,sim}    choose between simulation or real environment mode
 
-        python main.py YOUR_ALGORITHM {sim/rr} train hyperparameters outdir
-2. trial
+After you've chosen your algorithm, you can either run a session in simulation or real environment mode.
 
-        python main.py YOUR_ALGORITHM {sim/rr} trial hyperparameters
+    python main.py ddpg sim -h
+Either in simulation or real environment mode you can choose between train or trial mode.
 
-where you always can choose between `{sim/rr}` the simulated environment `sim` or the real environment `rr`.
+    positional arguments:
+    {train,trial}  choose between train or trial
+    train        train mode in simulated environment
+    trial        trial mode in simulated environment
+In train mode you have always to choose a parameters.csv file and a output directory.
+
+    python main.py ddpg sim train -h
+You can have a look at the [parameters.csv example](src/config/example/train/parameters.csv) and [a common output directory]()
+    
+    positional arguments:
+    hyperparameters  .csv folder with hyperparameters for specified algorithm
+    outdir           output directory of your training data
+In trial mode you have always to choose a folder containing a parameters.csv and a policy and the number of episodes to run your policy.
+
+    python main.py ddpg sim trial -h
+
+You can try the [trial example](/src/config/example/trial/Readme.md)
+
+    positional arguments:
+    policy      path to your policy
+    outdir      save your results in specified directory
+    episodes    number of episodes to start your trial in sim mode
+
+
 
 ## Example
 
