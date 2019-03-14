@@ -29,14 +29,14 @@ def layout():
         "steps": 100000,
         "warmup_samples": 1000,
         "noise_decay": 0.9,
-        "transform": lambda x:x,
+        "transform": lambda x: x,
         "actor_lr": 1e-3,
         "critic_lr": 1e-3,
         "lr_decay": 1.0,
-        "lr_min":1.e-7,
+        "lr_min": 1.e-7,
         "trial_horizon": 5000,
-        "actor_hidden_layers":[10, 10, 10],
-        "critic_hidden_layers":[10, 10, 10],
+        "actor_hidden_layers": [10, 10, 10],
+        "critic_hidden_layers": [10, 10, 10],
         "device": "cpu"
     }
     return layout_dict

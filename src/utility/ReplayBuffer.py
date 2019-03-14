@@ -8,8 +8,6 @@ class ReplayBuffer:
     """
     A finite sized cache. It is used to sample transitions (s, a, r, s_2).
     """
-    
-    
     def __init__(self, buffer_size, device):
         """
         Creates a ReplayBuffer of size buffer_size
@@ -24,7 +22,7 @@ class ReplayBuffer:
     def __str__(self):
         return str(self.buffer_size)
 
-    def add(self, s, a ,r, s_2, done):
+    def add(self, s, a, r, s_2, done):
         """
         Store transition (s, a, r, s_2) in replay buffer,
         discards oldest transition when buffer is full
@@ -42,7 +40,6 @@ class ReplayBuffer:
             self.buffer.popleft()
             self.buffer.append(transition)
 
-
     def sample_batch(self, batch_size):
         """
         Selects a random batch of size batch_size and returns the resulting
@@ -50,8 +47,6 @@ class ReplayBuffer:
         param batch_size: number of batches to take
         return: transitions (s, a, r, s_2) as np arrays
         """
-        batch = []
-
         if self.count < batch_size:
             batch_size = self.count
 
@@ -62,8 +57,7 @@ class ReplayBuffer:
         s_2_batch = torch.tensor([b[3] for b in batch], dtype=torch.float32, device=self.device)
         done_batch = torch.tensor([b[4] for b in batch], dtype=torch.float32, device=self.device).unsqueeze(1)
 
-        return (s_batch, a_batch, r_batch, s_2_batch, done_batch)
-
+        return s_batch, a_batch, r_batch, s_2_batch, done_batch
 
     def clear (self):
         """
