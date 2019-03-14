@@ -5,7 +5,8 @@ and maps them
 """
 import torch
 import numpy as np
-from src.algorithm.MPC.util import angle_from_sincos, angle_normalize
+from src.utility.util import angle_from_sincos
+from src.utility.util import angle_normalize
 
 
 def perfect_reward_model_pendulum(state, action):
@@ -35,7 +36,8 @@ def perfect_reward_model_pendulum(state, action):
     cost = angle_normalize(theta) ** 2 + .1 * theta_dot ** 2 + .001 * u ** 2
     return -cost
 
-def perfrect_reward_model_cartpolestab(state, action):
+
+def perfect_reward_model_cartpole_stab(state, action):
     if state.dim == 1:
         cos_th = state[2]
     else:
@@ -43,7 +45,8 @@ def perfrect_reward_model_cartpolestab(state, action):
 
     return -cos_th + 1.
 
-def perfrect_reward_model_cartpoleswing(state, action):
+
+def perfect_reward_model_cartpole_swing(state, action):
     if state.dim == 1:
         cos_th = state[2]
     else:
@@ -54,11 +57,11 @@ def perfrect_reward_model_cartpoleswing(state, action):
 
 rewards = {
     "Pendulum-v0": perfect_reward_model_pendulum,
-    "CartpoleStabShort-v0": perfrect_reward_model_cartpolestab,
-    "CartpoleSwingShort-v0": perfrect_reward_model_cartpolestab
+    "CartpoleStabShort-v0": perfect_reward_model_cartpole_stab,
+    "CartpoleSwingShort-v0": perfect_reward_model_cartpole_stab
 }
 
 # reward functions using only torch and not numpy
 rewards_t = {
-    "CartpoleStabShort-v0": perfrect_reward_model_cartpolestab
+    "CartpoleStabShort-v0": perfect_reward_model_cartpole_stab
 }
