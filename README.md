@@ -64,7 +64,7 @@ Either in simulation or real environment mode you can choose between train or tr
 In train mode you have always to choose a parameters.csv file and a output directory.
 
     python main.py ddpg sim train -h
-You can have a look at the [parameters.csv example](src/config/example/train/parameters.csv) and [a common output directory]()
+You can have a look at the [parameters.csv example](src/config/example/train/parameters.csv) and [a common output directory](/src/config/example/trial)
     
     positional arguments:
     hyperparameters  .csv folder with hyperparameters for specified algorithm
@@ -86,9 +86,9 @@ You can try the [trial example](/src/config/example/trial/Readme.md)
 
 For example you can train the algorithm [DDPG](src/algorithm/DDPG/Readme.md) with given hyperparameters as a .csv file. For example [parameters.csv](parameters.csv)
 
-| run_id        | env                  | steps  | batch_size | buffer_size | warmup_samples | actor_lr | critic_lr | actor_hidden_layers | critic_hidden_layers | tau  | noise_decay | lr_decay | lr_min     | 
-|---------------|----------------------|--------|------------|-------------|----------------|----------|-----------|---------------------|----------------------|------|-------------|----------|------------| 
-| CartpoleTrial | CartpoleStabShort-v0 | 100000 | 64         | 1000000     | 100            | 0.001    | 0.001     | [100,150]           | [100,150]            | 0.01 | 0.99        | 1.       | 0.00000001 | 
+| run_id        | env                  | steps  | batch_size | buffer_size | warmup_samples | actor_lr | critic_lr | actor_hidden_layers | critic_hidden_layers | tau  | noise_decay | lr_decay | lr_min | batch_norm | trial_horizon | action_space_limits | dirname                                | 
+|---------------|----------------------|--------|------------|-------------|----------------|----------|-----------|---------------------|----------------------|------|-------------|----------|--------|------------|---------------|---------------------|----------------------------------------| 
+| CartpoleTrial | CartpoleStabShort-v0 | 300000 | 64         | 1000000     | 20000          | 0.001    | 0.01      | [100, 100, 50]      | [100, 100]           | 0.01 | 0.99        | 1.0      | 1e-08  | False      | 5000          | ([-5.0], [5.0])     | out/CartpoleTrial_CartpoleStabShort-v0 | 
 
 Execute this command to obtain results:
 
@@ -105,7 +105,7 @@ Your output should be something like this:
 
 And the given plot in your specified `outdir`:
 
-![Imgur](https://i.imgur.com/zq8p1d4.png)
+![Imgur](https://i.imgur.com/UvBPpmX.png)
 
 To trial your models you can choose a model in the `outdir` that fits your needs.
 
@@ -114,14 +114,20 @@ the policy as `policy` and take the specified `parameters.csv` into `test_model`
 
 Now we can execute the model and obtain our results graphically.
 
-    python main.py ddpg sim trial test_model result 1
+    python main.py ddpg sim trial test_model result 100
+    
+
 
 your reward plot for your policy will look like this:
 
-![link]()
+![link](https://i.imgur.com/Pe5K8ZW.png)
 
-and the obtained policy like this:
+and the obtained policy like this (we only let the policy render once):
 
-![gif]()
+![gif](https://i.imgur.com/Hp8kmF5.gif)
 
 Have fun testing parameters and [writing your own algorithms](/src/config/Readme.md)
+
+## Troubleshooting
+
+If you have problems with training or trial sessions just make sure your output folders are empty and you always name the hyperparameters file as `parameters.csv` and the policy as `policy`.
