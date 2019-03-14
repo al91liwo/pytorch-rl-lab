@@ -101,4 +101,4 @@ Execute this command to obtain results:
 
 Your output should be something like this:
 
-[!alt text](https://imgur.com/fjlQHah)
+[!Alt Text](https://i.imgur.com/fjlQHah.png)
