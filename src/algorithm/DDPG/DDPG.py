@@ -81,19 +81,19 @@ class DDPG:
         self.actor_target = copy.deepcopy(self.actor_network).to(self.device)
         self.critic_target = copy.deepcopy(self.critic_network).to(self.device)
         
-        #optimizer initialization
+        # optimizer initialization
         self.actor_optim = torch.optim.Adam(self.actor_network.parameters(), lr=actor_lr)
         self.critic_optim = torch.optim.Adam(self.critic_network.parameters(), lr=critic_lr)
         self.actor_lr_scheduler = torch.optim.lr_scheduler.ExponentialLR(self.actor_optim, lr_decay)
         self.critic_lr_scheduler = torch.optim.lr_scheduler.ExponentialLR(self.critic_optim, lr_decay)
         
-        #training parameters
+        # training parameters
         self.loss = nn.MSELoss()
         self.noise_decay = torch.tensor(noise_decay, device=self.device, dtype=torch.float)
         self.trial_horizon = trial_horizon
         self.gamma = torch.tensor(gamma, device=self.device, dtype=torch.float)
         self.tau = torch.tensor(tau, device=self.device, dtype=torch.float)
-        #gaussian noise on actions used
+        # gaussian noise on actions used
         self.noise_torch = torch.distributions.normal.Normal(0, self.env_high[0])
 
     def action_selection(self, state):
@@ -298,7 +298,7 @@ class DDPG:
         if not os.path.exists(os.path.join(dirname)):
             print("no model checkoutpoint found")
             return
-        self.actor_network.load_state_dict(torch.load(os.path.join(dirname)))
+        self.actor_network.load_state_dict(torch.load(os.path.join(dirname), map_location='cpu'))
 
     def trial_sim(self, episodes):
         """
@@ -316,7 +316,7 @@ class DDPG:
             while not done:
                 state = obs
                 action = self.forward_actor_network(self.actor_network, state)
-                if(step == 0):
+                if step == 0:
                     self.env.render()
                 obs, reward, done, _ = self.env.step(action)
 
