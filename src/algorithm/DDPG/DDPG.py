@@ -10,6 +10,7 @@ from src.utility.ReplayBuffer import ReplayBuffer
 import os
 import datetime
 
+
 class DDPG:
     
     def __init__(self, env, action_space_limits, dirname="out", buffer_size=10000, batch_size=64, is_quanser_env=True,
@@ -42,7 +43,7 @@ class DDPG:
         """
 
         self.device = device
-        #algorithm timestamp
+        # algorithm timestamp
         self.started = datetime.datetime.now()
         
         self.env = env
@@ -54,7 +55,7 @@ class DDPG:
         self.total_steps = steps
         self.transformObservation = transform
 
-        #replay buffer parameters + initialization
+        # replay buffer parameters + initialization
         self.buffer_size = buffer_size
         self.replayBuffer = ReplayBuffer(self.buffer_size, self.device)
         self.batch_size = batch_size
@@ -63,13 +64,13 @@ class DDPG:
         self.state_dim = self.env.observation_space.shape[0]
         self.action_dim = self.env.action_space.shape[0]
         
-        #optimizer parameters
+        # optimizer parameters
         self.actor_lr = actor_lr
         self.critic_lr = critic_lr
         self.lr_decay = lr_decay
         self.lr_min = lr_min
   
-        #actor and critic parameters + initialization      
+        # actor and critic parameters + initialization
         self.actor_hidden_layers = actor_hidden_layers
         self.critic_hidden_layers = critic_hidden_layers
         self.actor_network = ActorNetwork([self.state_dim, *self.actor_hidden_layers, self.action_dim],
@@ -94,8 +95,6 @@ class DDPG:
         self.tau = torch.tensor(tau, device=self.device, dtype=torch.float)
         #gaussian noise on actions used
         self.noise_torch = torch.distributions.normal.Normal(0, self.env_high[0])
-
-
 
     def action_selection(self, state):
         """
@@ -139,7 +138,7 @@ class DDPG:
         loss.backward(retain_graph=True)
         self.critic_optim.step()
    
-    def forwardActorNetwork(self, network, state):
+    def forward_actor_network(self, network, state):
         """
         Forwards state through either target or training ActorNetwork
         param network: either target or training ActorNetwork
@@ -165,13 +164,11 @@ class DDPG:
             episodes = 5
             average_reward = 0
             for episode in range(episodes):
-                done = False
-
                 obs = self.env.reset()
                 total_reward = 0
                 for t in range(self.trial_horizon):
                     state = self.transformObservation(obs)
-                    action = self.forwardActorNetwork(self.actor_target, state)
+                    action = self.forward_actor_network(self.actor_target, state)
                     obs, reward, done, _ = self.env.step(action)
                     total_reward += reward
                     if done:
@@ -200,7 +197,6 @@ class DDPG:
         sample_batch = self.replayBuffer.sample_batch(self.batch_size)
         s_batch, a_batch, r_batch, s_2_batch, done_batch = sample_batch
 
-
         # calculate policy/actor loss
         actor_loss = self.critic_network(s_batch, self.actor_network(s_batch))
         actor_loss = - actor_loss.mean() 
@@ -221,8 +217,6 @@ class DDPG:
         """
         statusprint = "{} /{} | {:.0f} /{:.0f} | {} /{} | alr,clr: {:.2E} {:.2E}"
         print(statusprint.format(step, self.total_steps, total_reward, reward_record, self.replayBuffer.count, self.replayBuffer.buffer_size, self.actor_lr_scheduler.get_lr()[0], self.critic_lr_scheduler.get_lr()[0]))
-  
-
 
     def train_rr(self):
         """
@@ -289,8 +283,6 @@ class DDPG:
                         reward_record = trial_average_reward
                         self.save_model(trial_average_reward)
                 rew.append(total_reward)
-
-
         # test & save final model
         trial_average_reward = self.trial()
         self.save_model("{:.2f}_final".format(trial_average_reward))
@@ -314,7 +306,7 @@ class DDPG:
         :return: reward trajectory as a list
         """
         rew = []
-        total_reward = 0
+        self.actor_network.eval()
         for step in range(episodes):
             done = False
             obs = self.env.reset()
@@ -323,13 +315,15 @@ class DDPG:
             i = 0
             while not done:
                 state = obs
-                action = self.forwardActorNetwork(self.actor_network, state)
+                action = self.forward_actor_network(self.actor_network, state)
                 obs, reward, done, _ = self.env.step(action)
+                self.env.render()
                 done = done or i >= self.trial_horizon - 1
                 total_reward += reward
                 i += 1
 
             rew.append(total_reward)
+        self.actor_network.train()
         return rew
 
     def trial_rr(self, episodes):

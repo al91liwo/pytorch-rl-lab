@@ -88,7 +88,7 @@ For example you can train the algorithm [DDPG](src/algorithm/DDPG/Readme.md) wit
 
 | run_id        | env                  | steps  | batch_size | buffer_size | warmup_samples | actor_lr | critic_lr | actor_hidden_layers | critic_hidden_layers | tau  | noise_decay | lr_decay | lr_min     | 
 |---------------|----------------------|--------|------------|-------------|----------------|----------|-----------|---------------------|----------------------|------|-------------|----------|------------| 
-| CartpoleTrial | CartpoleStabShort-v0 | 10000 | 64         | 1000000     | 100            | 0.001    | 0.001     | [100,150]           | [100,150]            | 0.01 | 0.99        | 1.       | 0.00000001 | 
+| CartpoleTrial | CartpoleStabShort-v0 | 100000 | 64         | 1000000     | 100            | 0.001    | 0.001     | [100,150]           | [100,150]            | 0.01 | 0.99        | 1.       | 0.00000001 | 
 
 Execute this command to obtain results:
 
@@ -101,4 +101,27 @@ Execute this command to obtain results:
 
 Your output should be something like this:
 
-[!Alt Text](https://i.imgur.com/fjlQHah.png)
+![Alt Text](https://i.imgur.com/fjlQHah.png)
+
+And the given plot in your specified `outdir`:
+
+![Imgur](https://i.imgur.com/zq8p1d4.png)
+
+To trial your models you can choose a model in the `outdir` that fits your needs.
+
+We choose the model that gained 380 reward and take the parameters.csv to a new folder called `test_model` and safe 
+the policy as `policy` and take the specified `parameters.csv` into `test_model`.
+
+Now we can execute the model and obtain our results graphically.
+
+    python main.py ddpg sim trial test_model result 1
+
+your reward plot for your policy will look like this:
+
+![link]()
+
+and the obtained policy like this:
+
+![gif]()
+
+Have fun testing parameters and [writing your own algorithms](/src/config/Readme.md)
