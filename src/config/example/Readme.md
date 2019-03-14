@@ -26,7 +26,6 @@ To start a training session you can for example use this command.
 The plot will look like something like this:
 
 
-
 Insert some gifs or plots with hyperparameters 
 
 ### MPC

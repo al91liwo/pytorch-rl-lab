@@ -316,13 +316,16 @@ class DDPG:
             while not done:
                 state = obs
                 action = self.forward_actor_network(self.actor_network, state)
+                if(step == 0):
+                    self.env.render()
                 obs, reward, done, _ = self.env.step(action)
-                self.env.render()
+
                 done = done or i >= self.trial_horizon - 1
                 total_reward += reward
                 i += 1
 
             rew.append(total_reward)
+
         self.actor_network.train()
         return rew
 
