@@ -88,7 +88,7 @@ For example you can train the algorithm [DDPG](src/algorithm/DDPG/Readme.md) wit
 
 | run_id        | env                  | steps  | batch_size | buffer_size | warmup_samples | actor_lr | critic_lr | actor_hidden_layers | critic_hidden_layers | tau  | noise_decay | lr_decay | lr_min     | 
 |---------------|----------------------|--------|------------|-------------|----------------|----------|-----------|---------------------|----------------------|------|-------------|----------|------------| 
-| CartpoleTrial | CartpoleStabShort-v0 | 100000 | 64         | 1000000     | 100            | 0.001    | 0.001     | [100,150]           | [100,150]            | 0.01 | 0.99        | 1.       | 0.00000001 | 
+| CartpoleTrial | CartpoleStabShort-v0 | 10000 | 64         | 1000000     | 100            | 0.001    | 0.001     | [100,150]           | [100,150]            | 0.01 | 0.99        | 1.       | 0.00000001 | 
 
 Execute this command to obtain results:
 
@@ -97,4 +97,8 @@ Execute this command to obtain results:
 
 `out` specifies the directory where the output result will be saved (this is strictly specified by the developer) for more information take a look at [config readme](src/config/Readme.md)
 
-`train` the command to train the specified algorithm under given hyperparameters (the parameters.csv) file
+`train` the command to train the specified algorithm under given hyperparameters (the [parameters.csv](parameters.csv)) file
+
+Your output should be something like this:
+
+[!alt text](https://imgur.com/fjlQHah)
