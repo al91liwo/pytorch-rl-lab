@@ -36,7 +36,7 @@ If you want to add your own algorithm to this repository, you need to follow cer
         
         def instance_from_config(config):
             """
-            The developer creates a instance of his algorithm and returns it to the config parser
+            The developer creates a instance of his algorithm and returns it to the algorithm parser
             :param config: the config to load (needs to fit your needs [containing your hyperparameters])
             :return: an instance of the developers algorithm (DDPG example)
             """
