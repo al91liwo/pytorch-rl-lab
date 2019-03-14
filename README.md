@@ -64,7 +64,7 @@ Either in simulation or real environment mode you can choose between train or tr
 In train mode you have always to choose a parameters.csv file and a output directory.
 
     python main.py ddpg sim train -h
-You can have a look at the [parameters.csv example](src/config/example/train/parameters.csv) and [a common output directory]()
+You can have a look at the [parameters.csv example](src/config/example/train/parameters.csv) and [a common output directory](/src/config/example/trial)
     
     positional arguments:
     hyperparameters  .csv folder with hyperparameters for specified algorithm
@@ -125,3 +125,7 @@ and the obtained policy like this:
 ![gif]()
 
 Have fun testing parameters and [writing your own algorithms](/src/config/Readme.md)
+
+## Troubleshooting
+
+If you have problems with training or trial sessions just make sure your output folders are empty and you always name the hyperparameters file as `parameters.csv` and the policy as `policy`.
