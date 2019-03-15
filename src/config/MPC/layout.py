@@ -3,9 +3,10 @@ import torch.nn
 import ast
 import os
 import matplotlib.pyplot as plt
-# this is the validate function to validate any config under the developers layout constraint
+
 from src.algorithm.MPC.model import ProbabilisticEnvironmentModel, NegLogLikelihood, ModelTrainer, EnvironmentModel, perfect_models, IdleTrainer
 from src.algorithm.MPC.reward import rewards_t as rewards
+# this is the validate function to validate any config under the developers layout constraint
 from src.utility.util import validate_config
 # import the developers algorithm here
 import os.path
@@ -18,30 +19,42 @@ def layout():
     :return: layout as a dict
     """
     layout_dict = {
-        #every layout needs a run_id param
+        # every layout needs a run_id param
         "run_id": 0,
         "env": 0,
-        "dirname": "out",
-        "batch_size": 64,
-        "is_quanser_env": True,
-        "gamma": .99,
-        "batch_norm": True,
-        "steps": 100000,
-        "warmup_samples": 1000,
-        "noise_decay": 0.9,
-        "transform": lambda x:x,
-        "lr": 1e-3,
-        "lr_decay": 1.0,
-        "lr_min":1.e-8,
+        "reward": 0,
+        "model": 0,
+        "trainer": 0,
+        "predict_horizon": 20,
+        "warmup_trial": 1,
+        "learning_trials": 20,
         "trial_horizon": 1000,
-        "layers":[10, 10, 10],
+        "cem_samples": 400,
+        "nelite": 0,
+        "render": 0,
+        "max_memory": 1000000,
+        "device": "cpu",
+        "layers": 0,
+        "activations": 0,
+        "batch_norm": True,
+        # Probabilistic Environment Model
         "predicts_delta": True,
+        "propagate_probabilistic": True,
+        "variance_bound": [1.e-5, 0.5],
+        "trial_horizon": 1000,
+        # Model trainer
         "weight_decay": 0,
-        "model": "perfect",
-        "propagate_probabilistic":False,
-        "device": "cpu"
+        "lr": 1e-2,
+        "lr_min": 1e-5,
+        "lr_decay": 1.,
+        "batch_size": 50,
+        "epochs": 1,
+        "logging": False,
+        "plotting": False
+
     }
     return layout_dict
+
 
 lossFunctions = {
     "mse": torch.nn.MSELoss,
@@ -81,7 +94,8 @@ def instance_from_config(config):
             layout_dict["device"])
         loss = NegLogLikelihood()
     elif layout_dict["model"] == "nn":
-        model = EnvironmentModel(state_dim, action_dim, layout_dict["layers"], [], predicts_delta=True, batch_norm=layout_dict["batch_norm"]).to(layout_dict["device"])
+        model = EnvironmentModel(state_dim, action_dim, layout_dict["layers"], [], predicts_delta=True,
+                                 batch_norm=layout_dict["batch_norm"]).to(layout_dict["device"])
     elif layout_dict["model"] == "perfect":
         if layout_dict["env"] in perfect_models:
             model = perfect_models[layout_dict["env"]]
@@ -91,13 +105,18 @@ def instance_from_config(config):
     if layout_dict["model"] == "perfect":
         trainer = IdleTrainer()
     else:
-        trainer = ModelTrainer(model, loss_func=loss, weight_decay=layout_dict["weight_decay"], epochs=layout_dict["epoch"], lr=layout_dict["lr"], lr_decay=layout_dict["lr_deacy"], lr_min=layout_dict["lr_min"], batch_size=layout_dict["batch_size"], logging=layout_dict["logging"], plotting=False)
+        trainer = ModelTrainer(model, loss_func=loss, weight_decay=layout_dict["weight_decay"],
+                               epochs=layout_dict["epoch"], lr=layout_dict["lr"], lr_decay=layout_dict["lr_deacy"],
+                               lr_min=layout_dict["lr_min"], batch_size=layout_dict["batch_size"],
+                               logging=layout_dict["logging"], plotting=False)
 
     if not layout_dict["env"] in rewards:
         raise NotImplementedError("A reward function for the environment {} does not exist!".format(layout["env"]))
 
-    mpc = MPC(env, rewards[layout_dict["env"]], model, trainer, trial_horizon=layout_dict["trial_horizon"], device=layout_dict["device"], warmup_trials=layout_dict["warump_trials"], trials=layout_dict["trials"],
-              predict_horizon=layout_dict["predict_horizon"], cem_samples=layout_dict["cem_samples"], nelite=layout_dict["elites"])
+    mpc = MPC(env, rewards[layout_dict["env"]], model, trainer, trial_horizon=layout_dict["trial_horizon"],
+              device=layout_dict["device"], warmup_trials=layout_dict["warump_trials"], trials=layout_dict["trials"],
+              predict_horizon=layout_dict["predict_horizon"], cem_samples=layout_dict["cem_samples"],
+              nelite=layout_dict["elites"])
 
     return mpc
 

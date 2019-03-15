@@ -6,7 +6,7 @@ control_time_diagnoser = TimeDiagnoser("average_cem_time")
 
 
 def cem_optimize(init_mean, cost_func, init_variance=1., samples=400, precision=1.0e-3, steps=5, nelite=40, alpha=0.1,
-                 contraint_mean=None, constraint_variance=(-999999, 999999), device="cpu"):
+                 constraint_mean=None, constraint_variance=(-999999, 999999), device="cpu"):
     """
     cem_optimize minimizes cost_function by iteratively sampling values around the current mean with a set variance.
     Of the sampled values the mean of the nelite number of samples with the lowest cost is the new mean for the next iteration.
@@ -20,21 +20,21 @@ def cem_optimize(init_mean, cost_func, init_variance=1., samples=400, precision=
     :param steps: number of steps
     :param nelite: number of best samples whose mean will be the mean for the next iteration
     :param alpha: softupdate, weight for old mean and variance
-    :param contraint_mean: tuple with minimum and maximum mean
+    :param constraint_mean: tuple with minimum and maximum mean
     :param constraint_variance: tuple with minumum and maximum variance
     :param device: either gpu or cpu (torch tensor configuration)
     :return:
     """
     control_time_diagnoser.start_log("average_cem_time")
     mean = init_mean
-    covariance_matrizies = torch.stack([torch.diagflat(torch.tensor([init_variance], device=device)) for _ in range(len(mean))])
+    covariance_matrices = torch.stack([torch.diagflat(torch.tensor([init_variance], device=device)) for _ in range(len(mean))])
     # print(mean.type(), variance.type())
     step = 0
     diff = 9999999
     while diff > precision and step <= steps:
         # we create a distribution with action dimensionality and a batch size corresponding the trajectory length
         # dist.batch_shape == trajectory_len, dist.event_shape == action_space_dim
-        dist = distributions.MultivariateNormal(mean, covariance_matrix=covariance_matrizies)
+        dist = distributions.MultivariateNormal(mean, covariance_matrix=covariance_matrices)
         candidates = dist.sample_n(samples).to(device)
         costs = cost_func(candidates)
         # we sort descending because we want a maximum reward
@@ -47,10 +47,10 @@ def cem_optimize(init_mean, cost_func, init_variance=1., samples=400, precision=
         diff = torch.mean(torch.abs(mean - new_mean))
         # softupdate mean and variance with alpha
         mean = (1 - alpha) * new_mean + alpha * mean
-        covariance_matrizies = (1 - alpha) * new_covariance_matrizies + alpha * covariance_matrizies
+        covariance_matrices = (1 - alpha) * new_covariance_matrizies + alpha * covariance_matrices
         # print(mean, variance)
-        if not contraint_mean is None:
-            mean = clip(mean, contraint_mean[0], contraint_mean[1])
+        if not constraint_mean is None:
+            mean = clip(mean, constraint_mean[0], constraint_mean[1])
         step += 1
     control_time_diagnoser.end_log("average_cem_time")
     return mean
@@ -80,7 +80,8 @@ def clip(x, min, max):
 
 class TrajectoryController:
 
-    def __init__(self, model, reward, action_dim, action_min, action_max, trajectory_len, history_len, cost_function, device, cem_samples=400, nelite=0):
+    def __init__(self, model, reward, action_dim, action_min, action_max, trajectory_len, history_len,
+                 cost_function, device, cem_samples=400, nelite=0):
         """
         A TrajectoryController finds the next best action by evaluating a trajectory of future actions.
         Future actions are evaluated using a model.
@@ -130,7 +131,7 @@ class TrajectoryController:
             self.trajectory = torch.cat((self.trajectory[1:], torch.zeros((1, self.action_dim), device=self.device)), dim=0)
         # find a trajectory that optimizes the cummulative reward
 
-        self.trajectory = cem_optimize(self.trajectory, self.cost_func, init_variance=torch.max(torch.sqrt(self.action_max - self.action_min)).item(), contraint_mean=[self.action_min, self.action_max], device=self.device, steps=5, samples=self.cem_samples, nelite=self.nelite)
+        self.trajectory = cem_optimize(self.trajectory, self.cost_func, init_variance=torch.max(torch.sqrt(self.action_max - self.action_min)).item(), constraint_mean=[self.action_min, self.action_max], device=self.device, steps=5, samples=self.cem_samples, nelite=self.nelite)
         # print(self.trajectory)
         best_action = self.trajectory[0]
 

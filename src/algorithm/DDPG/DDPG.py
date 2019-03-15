@@ -19,7 +19,7 @@ class DDPG:
                  batch_norm=True,
                  actor_hidden_layers=[10, 10, 10], critic_hidden_layers=[10, 10, 10], device="cpu"):
         """
-        DDPG algorithm implementation as in TODO: link
+        DDPG algorithm implementation as in https://arxiv.org/abs/1509.02971
         param env: the gym environment to deal with
         param dirname: non-existing or existing directory in which the calculated immediate models will be saved in
         param action_space_limits: sets a limit on action space
@@ -191,7 +191,7 @@ class DDPG:
 
     def update(self):
         """
-        Calculating loss w.r.t. DDPG paper TODO: link paper 
+        Calculating loss w.r.t. DDPG paper https://arxiv.org/abs/1509.02971
         return: actor and critic loss        
         """
         sample_batch = self.replayBuffer.sample_batch(self.batch_size)
