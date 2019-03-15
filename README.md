@@ -97,7 +97,7 @@ Your output should be something like this:
 
 And the given plot in your specified `outdir`:
 
-![Imgur](https://i.imgur.com/UvBPpmX.png)
+![Imgur](https://i.imgur.com/abSj3MD.png)
 
 To trial your models you can choose a model in the `outdir` that fits your needs.
 
@@ -112,11 +112,11 @@ Now we can execute the model and obtain our results graphically.
 
 your reward plot for your policy will look like this:
 
-![link](https://i.imgur.com/Pe5K8ZW.png)
+![link](https://i.imgur.com/E4EMeeM.png)
 
 and the obtained policy like this (we only let the policy render once):
 
-![gif](https://i.imgur.com/Hp8kmF5.gif)
+![gif](https://i.imgur.com/URL7zer.gif)
 
 Have fun testing parameters and [writing your own algorithms](/src/config/Readme.md)
 
