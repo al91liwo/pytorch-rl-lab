@@ -130,7 +130,7 @@ Put your `policy` and `parameters.csv` in a new directory for example `test_mode
         
 After executing this command u will see similar results:
 
-![gif](https://i.imgur.com/pROIPCj.gif)
+![gif](https://i.imgur.com/tq1dsKY.gif)
     
 
 Have fun testing parameters and [writing your own algorithms](/src/config/Readme.md)
