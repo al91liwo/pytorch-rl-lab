@@ -101,7 +101,7 @@ And the given plot in your specified `outdir`:
 
 To trial your models you can choose a model in the `outdir` that fits your needs.
 
-We choose the model that gained 380 reward and take the parameters.csv to a new folder called `test_model` and safe 
+We choose the model that gained approx 10.000 reward and take the parameters.csv to a new folder called `test_model` and safe 
 the policy as `policy` and take the specified `parameters.csv` into `test_model`.
 
 Now we can execute the model and obtain our results graphically.
@@ -117,6 +117,21 @@ your reward plot for your policy will look like this:
 and the obtained policy like this (we only let the policy render once):
 
 ![gif](https://i.imgur.com/URL7zer.gif)
+
+### real environment
+
+If you want to execute this example on the real environment just train on the real environment
+        
+        python main.py ddpg sim train parameters.csv out
+        
+Put your `policy` and `parameters.csv` in a new directory for example `test_model`
+
+        python main.py ddpg sim trial test_model result 1
+        
+After executing this command u will see similar results:
+
+![gif](https://i.imgur.com/pROIPCj.gif)
+    
 
 Have fun testing parameters and [writing your own algorithms](/src/config/Readme.md)
 
