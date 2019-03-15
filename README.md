@@ -5,38 +5,30 @@ DDPG and MPC implementation of Group 06 Frederik Wegner and Alexander Lind
 
 This guide assumes you are working under Ubuntu 16.04
 
-1. Make sure you have Python >= 3.5.3 on your system. If that is not the case,
-   install Python3.6
+1. Make sure you have Python >= 3.5.3 on your system. If that is not the case, install Python3.6
 
         sudo add-apt-repository ppa:deadsnakes/ppa
         sudo apt-get update
         sudo apt-get install python3.6
         sudo apt-get install python3.6-venv
-    
-    More details on that can be found [here](https://askubuntu.com/questions/865554/how-do-i-install-python-3-6-using-apt-get).
+ 
+2. Clone this repository into some folder:
 
-2. Clone this repository into some folder to use the quanser_environment
-
-        git clone --recursive git@github.com:al91liwo/pytorch-rl-lab.git
+        git clone git@github.com:al91liwo/pytorch-rl-lab.git
             or
-        git clone --recursive https://github.com/al91liwo/pytorch-rl-lab.git
+        git clone https://github.com/al91liwo/pytorch-rl-lab.git
 
-3. Make sure you installed all dependencies of the dependencies.yaml.
-   Create a virtual environment, activate it, and update it.
-   You can also use an Anaconda virtual environment.
 
+4. Create a virtual environment, activate it, and update it. You can also use an Anaconda virtual environment.
+ 
         python3.6 -m venv venv3
         source venv3/bin/activate
         pip3 install -U pip setuptools
-   
-        conda install dependencies.yaml
-   More details on how to activate and use environments can be found [here](https://docs.conda.io/projects/conda/en/latest/user-guide/tasks/manage-environments.html)
+        
+5. Install the requirements.
 
-4. Install the `quanser_robots` package
-
-        cd clients
-        pip3 install -e .
-
+        pip3 install -r requirements.txt
+        
 5. Check that everything works correctly by running the code snippet
    from the [example quanser_environment](https://git.ias.informatik.tu-darmstadt.de/quanser/clients/blob/master/Readme.md) and [pytorch-rl-lab example](/src/config/example/Readme.md).
    
@@ -105,11 +97,12 @@ Your output should be something like this:
 
 And the given plot in your specified `outdir`:
 
-![Imgur](https://i.imgur.com/UvBPpmX.png)
+![Imgur](https://i.imgur.com/abSj3MD.png)
 
 To trial your models you can choose a model in the `outdir` that fits your needs.
+The model names that you need are always called `actortarget` with some numbers that represent the obtained `reward` in a training session.
 
-We choose the model that gained 380 reward and take the parameters.csv to a new folder called `test_model` and safe 
+We choose the model that gained approx 10.000 reward and take the parameters.csv to a new folder called `test_model` and safe 
 the policy as `policy` and take the specified `parameters.csv` into `test_model`.
 
 Now we can execute the model and obtain our results graphically.
@@ -120,11 +113,28 @@ Now we can execute the model and obtain our results graphically.
 
 your reward plot for your policy will look like this:
 
-![link](https://i.imgur.com/Pe5K8ZW.png)
+![link](https://i.imgur.com/E4EMeeM.png)
 
-and the obtained policy like this (we only let the policy render once):
+You can see that the approximate `reward` is `10.000`
 
-![gif](https://i.imgur.com/Hp8kmF5.gif)
+and the obtained policy looks like this (we only let the policy render once):
+
+![gif](https://i.imgur.com/URL7zer.gif)
+
+### real environment
+
+If you want to execute this example on the real environment just train on the real environment
+        
+        python main.py ddpg sim train parameters.csv out
+        
+Put your `policy` and `parameters.csv` in a new directory for example `test_model`
+
+        python main.py ddpg sim trial test_model result 1
+        
+After executing this command u will see similar results:
+
+![gif](https://imgur.com/RY9QW4x.gif)
+    
 
 Have fun testing parameters and [writing your own algorithms](/src/config/Readme.md)
 

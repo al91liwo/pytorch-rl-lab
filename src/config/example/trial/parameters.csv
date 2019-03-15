@@ -1,2 +1,2 @@
 run_id;env;steps;batch_size;buffer_size;warmup_samples;actor_lr;critic_lr;actor_hidden_layers;critic_hidden_layers;tau;noise_decay;lr_decay;lr_min;batch_norm;trial_horizon
-CartpoleTrial;CartpoleStabShort-v0;100000;64;1000000;100;0.001;0.001;[100,100,50];[100,100,50];0.01;0.99;1.;0.00000001;False;100
+CartpoleTrial;CartpoleStabShort-v0;100000;64;1000000;100;0.001;0.001;[100,100,50];[100,100,50];0.01;0.99;1.;0.00000001;False;10000
