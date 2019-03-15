@@ -108,7 +108,6 @@ class EnvironmentModel(NN):
         self.probabilistic = False
 
     def propagate(self, state, action):
-        #TODO: this is only commented out for testing
         input = torch.cat((state, action), dim=-1) # use negative dim so we can input batches aswell as single values
         # input = state
         output = self.forward(input)
@@ -150,9 +149,9 @@ class ProbabilisticEnvironmentModel(NN):
     def propagate(self, state, action):
         mean, var = self.propagate_dist(state, action)
         if self.propagate_probabilistic:
-            covariance_matrizies = torch.stack([torch.diagflat(v) for v in var])
+            covariance_matrices = torch.stack([torch.diagflat(v) for v in var])
             # create a batched distribution
-            dist = torch.distributions.MultivariateNormal(mean, covariance_matrizies)
+            dist = torch.distributions.MultivariateNormal(mean, covariance_matrices)
             # it would also be feasible to only use the means as output
             # this would mean our NN is deterministic but trained using the variance
             output = dist.sample()

@@ -8,10 +8,14 @@ from src.utility.util import angle_from_sincos
 
 
 class ModelEval:
-    """
-    Uses reference dynamics and reward models to evaluate the performance of a model
-    """
+
     def __init__(self, mpc, env, n_samples=20000):
+        """
+        Uses reference dynamics and reward models to evaluate the performance of a model
+        :param mpc: an mpc instance
+        :param env: openai gym environment
+        :param n_samples: number of samples to obtain
+        """
         self.mpc = mpc
         self.env = env
         self.action_space_uniform = distributions.uniform.Uniform(torch.from_numpy(env.action_space.low), torch.from_numpy(env.action_space.high))
@@ -19,6 +23,10 @@ class ModelEval:
         self._generate_testdata(n_samples)
 
     def _generate_testdata(self, n_samples):
+        """
+        Generates test data
+        :param n_samples: number of samples to obtain
+        """
         samples = []
         done = False
         obs = self.env.reset()
@@ -37,19 +45,26 @@ class ModelEval:
         # self.test_targets = torch.cat((states_out.float(), rewards_out.float()), dim=1)
 
     def plot_action_velocity(self, state):
+        """
+        :param state:
+        """
         model = self.mpc.model
         # speed from state (cos,sin,velo) (0,-1,0) applying different action
         actions = torch.linspace(-2., 2., 4000).unsqueeze(1)
         states = torch.tensor(state).repeat(4000, 1)
 
-        predictied_velo = model.propagate(states, actions)[:, 2]  # only get the velocity
-        actual_velo = perfect_models['Pendulum-v0'].propagate(states, actions)[:, 2]
+        predictied_velocity = model.propagate(states, actions)[:, 2]  # only get the velocity
+        actual_velocity = perfect_models['Pendulum-v0'].propagate(states, actions)[:, 2]
 
-        plt.plot(actions.detach().numpy(), predictied_velo.detach().numpy(), label='prediction')
-        plt.plot(actions.detach().numpy(), actual_velo.detach().numpy(), label='truth')
+        plt.plot(actions.detach().numpy(), predictied_velocity.detach().numpy(), label='prediction')
+        plt.plot(actions.detach().numpy(), actual_velocity.detach().numpy(), label='truth')
         plt.legend()
 
     def plot_action_state(self, state):
+        """
+        :param state:
+        :return:
+        """
         model = self.mpc.model
         # speed from state (cos,sin,velo) (0,-1,0) applying different action
         actions = torch.linspace(-2., 2., 4000).unsqueeze(1)
@@ -69,9 +84,12 @@ class ModelEval:
         plt.legend()
 
     def eval_print(self):
+        """
+        :return:
+        """
         model = self.mpc.model
-        self.model_states_out = model.propagate(self.test_states_in.float(), self.test_actions_in.float())
-        err_dynamics = torch.mean((self.model_states_out - self.test_states_out) ** 2)
+        model_states_out = model.propagate(self.test_states_in.float(), self.test_actions_in.float())
+        err_dynamics = torch.mean((model_states_out - self.test_states_out) ** 2)
         print("Dynamics model mean squared error: ", err_dynamics)
         plt.figure(figsize=(20, 20))
         states = [[-1., 0., 1.], [1., 0., 1.], [0., 1., 1.], [0., -1., 1.], [-1., 0., 0.], [1., 0., 0.], [0., 1., 0.], [0., -1., 0.], [-1., 0., -1.], [1., 0., -1.], [0., 1., -1.], [0., -1., -1.], [-1., 0., 4.], [1., 0., 4.], [0., 1., 4.], [0., -1., 4.]]
@@ -86,9 +104,10 @@ class ModelEval:
             ax.set_title(title)
         plt.show()
 
+
 class TimeDiagnoser:
     """
-    TimeDiagnoser can be used to analyze code performance by making time logging easy.
+    Time Diagnoser can be used to analyze code performance by making time logging easy.
     """
 
     def __init__(self, *labels):

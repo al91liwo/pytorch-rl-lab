@@ -49,7 +49,7 @@ def cem_optimize(init_mean, cost_func, init_variance=1., samples=400, precision=
         mean = (1 - alpha) * new_mean + alpha * mean
         covariance_matrices = (1 - alpha) * new_covariance_matrizies + alpha * covariance_matrices
         # print(mean, variance)
-        if not constraint_mean is None:
+        if constraint_mean is not None:
             mean = clip(mean, constraint_mean[0], constraint_mean[1])
         step += 1
     control_time_diagnoser.end_log("average_cem_time")
@@ -59,23 +59,45 @@ def cem_optimize(init_mean, cost_func, init_variance=1., samples=400, precision=
 class FIFOBuffer:
 
     def __init__(self, length):
+        """
+        A FIFO (first in first out) Buffer that stores elements and stash oldest entries, when full
+        :param length: maximum number of elements to store in this buffer
+        """
         self.length = length
         self.buffer = []
 
     def push(self, elem):
+        """
+        Adds a element to this buffer and stash's the oldest entry, when full
+        :param elem: element to add to this buffer
+        """
         self.buffer.insert(0, elem)
         if len(self.buffer) > self.length:
             del self.buffer[-1]
 
     def get(self):
+        """
+        Returns the buffer
+        :return: this buffer
+        """
         return self.buffer
 
     def clear(self):
+        """
+        Clears the entries of this Buffer
+        """
         self.buffer.clear()
 
 
-def clip(x, min, max):
-    return torch.max(torch.min(x, max), min)
+def clip(x, minimum, maximum):
+    """
+    Calculates the minimum between x and maximum and returns the maximum of this result and minimum
+    :param x: a torch tensor as minimum between maximum and x
+    :param minimum: a torch tensor as minimum
+    :param maximum: a torch tensor as maximum
+    :return:
+    """
+    return torch.max(torch.min(x, maximum), minimum)
 
 
 class TrajectoryController:
@@ -109,13 +131,25 @@ class TrajectoryController:
         self.nelite = self.cem_samples // 10 if nelite == 0 else nelite
 
     def reset(self):
+        """
+        resets the trajectory
+        """
         self.trajectory = None
 
-    def set_trajectory_len(self, new_traj_len):
-        self.trajectory_len = new_traj_len
+    def set_trajectory_len(self, new_trajectory_len):
+        """
+        Sets a new trajectory length
+        :param new_trajectory_len: maximum of trajectory length
+        """
+        self.trajectory_len = new_trajectory_len
         self.trajectory_shape = (self.trajectory_len, self.action_dim)
 
     def next_action(self, obs):
+        """
+
+        :param obs:
+        :return:
+        """
         # history = self.history.get()
         # missing = self.history_len - len(history)
         # if missing == self.history_len:
