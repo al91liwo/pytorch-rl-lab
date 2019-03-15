@@ -18,20 +18,27 @@ class Swish(torch.nn.Module):
         >>> inp = torch.randn(2)
         >>> output = m(inp)
     """
-
     def forward(self, inp):
         return inp * torch.sigmoid(inp)
 
 
 class NegLogLikelihood(nn.Module):
     @staticmethod
-    def forward(output, target, variance_bound=[1.e-8, 1.e8]):
+    def forward(output, target):
+        """
+        Computes the negative log likelihood prediction error over output and target(or a batch of each).
+        The
+        :param output: outputs of the entity to optimize
+        :param target: the targets of the optimization
+        :return: the mean log likelihood prediction error over the inputs
+        """
         softplus = torch.nn.Softplus()
         mean, diagonalcovariance = torch.chunk(output, 2, dim=-1)
         # diagonalcovariance = torch.abs(diagonalcovariance)
         mean_err = mean - target
 
-        loss = torch.mean((mean_err * mean_err)/diagonalcovariance, dim=-1) + torch.mean(torch.log(diagonalcovariance), dim=-1)
+        loss = torch.mean(
+            (mean_err * mean_err)/diagonalcovariance, dim=-1) + torch.mean(torch.log(diagonalcovariance), dim=-1)
         return loss.mean()
 
 
@@ -39,8 +46,13 @@ class NN(nn.Module):
     """
     A plain neural network.
     """
-
     def __init__(self, layers, activations, batch_norm=True):
+        """
+        Creates a neural network.
+        :param layers: layers of the network, including input and output layers
+        :param activations: per layer activation functions. If less then layers, default Swish will be used
+        :param batch_norm: whether to batch normalize between layers
+        """
         super(NN, self).__init__()
         self.layers = nn.ModuleList([nn.Linear(dim_in, dim_out) for dim_in, dim_out in zip(layers[:-1], layers[1:])])
         # standard activation function for each hidden layer
@@ -53,6 +65,11 @@ class NN(nn.Module):
         self.use_norm = batch_norm
 
     def forward(self, x):
+        """
+        propagates an activation through the network
+        :param x: network input
+        :return: network output
+        """
         for layer, norm, activation in zip(self.layers[:-1], self.norm, self.activations):
             x = activation(layer(x))
             if self.use_norm:
@@ -64,6 +81,14 @@ class NN(nn.Module):
 class EnvironmentModelSeparateReward(nn.Module):
 
     def __init__(self, state_dim, action_dim, hidden_layers, activations, batch_norm=True):
+        """
+        An environment model that models the reward function of the environment with a separate neural nework.
+        :param state_dim: dimension of states in the environment
+        :param action_dim: dimension of action in the environment
+        :param hidden_layers: hidden layers of the nerworks
+        :param activations: per layer activations of the networks, if less than layers, defaults will be used
+        :param batch_norm: whether to use batch normalization between layers
+        """
         super(EnvironmentModelSeparateReward, self).__init__()
         layers_dynamics = [state_dim+action_dim]+hidden_layers+[state_dim]
         layers_reward = [state_dim+action_dim]+hidden_layers+[1]
@@ -71,6 +96,12 @@ class EnvironmentModelSeparateReward(nn.Module):
         self.model_reward = NN(layers_reward, activations, batch_norm)
 
     def forward(self, x, catreward=True):
+        """
+        Propagates an input through the dynamics and reward network
+        :param x: the input
+        :param catreward: whether to concatenate the outputs of dynamics and reward model such they appear as one
+        :return: the output of the networks
+        """
         x = torch.squeeze(x)
         if catreward:
             return torch.cat((self.model_dynamics(x), self.model_reward(x)), dim=-1)
@@ -78,6 +109,12 @@ class EnvironmentModelSeparateReward(nn.Module):
             return self.model_dynamics(x), self.model_reward(x)
 
     def propagate(self, state, action):
+        """
+        See documentation of forward. Concatenates state and action before forwarding.
+        :param state: input state
+        :param action: input action
+        :return: the next state
+        """
         inp = torch.cat((state, action), dim=-1)  # use negative dim so we can input batches aswell as single values
         output = self.forward(inp)
         output = torch.squeeze(output)
@@ -88,12 +125,10 @@ class EnvironmentModelSeparateReward(nn.Module):
 
 
 class EnvironmentModel(NN):
-    """
-    A neural network parameterized to model an OpenAI Gym environments state transition.
-    """
 
     def __init__(self, state_dim, action_dim, hidden_layers, activations, batch_norm=True, predicts_delta=True):
         """
+        A neural network parameterized to model an OpenAI Gym environments state transition.
         :param state_dim: dimension of the environments state space
         :param action_dim: dimension of the environments action space
         :param hidden_layers: hidden_layers is a list defining the number of hidden nodes per layer
@@ -108,6 +143,12 @@ class EnvironmentModel(NN):
         self.probabilistic = False
 
     def propagate(self, state, action):
+        """
+        Calculates the next state with the model.
+        :param state: input state
+        :param action: input action
+        :return: the next state
+        """
         input = torch.cat((state, action), dim=-1) # use negative dim so we can input batches aswell as single values
         # input = state
         output = self.forward(input)
@@ -118,15 +159,12 @@ class EnvironmentModel(NN):
 
 
 class ProbabilisticEnvironmentModel(NN):
-    """
-    A neural network parameterized to model an OpenAI Gym environemnt.
-    Also outputs the diagonal covariance of the prediction.
-    This means the output layer will be of format [mean:variance].
-    """
-
     # the variance bounds were taken from the handful of trials source code
     def __init__(self, state_dim, action_dim, hidden_layers, activations, variance_bound=[1.e-5, 0.5], batch_norm=True, predicts_delta=True, propagate_probabilistic=True):
         """
+        A neural network parameterized to model an OpenAI Gym environemnt.
+        Also outputs the diagonal covariance of the prediction.
+        This means the output layer will be of format [mean:variance].
         :param state_dim: dimension of the environments state space
         :param action_dim: dimension of the environments action space
         :param hidden_layers: hidden_layers is a list defining the number of hidden nodes per layer
@@ -147,6 +185,12 @@ class ProbabilisticEnvironmentModel(NN):
         self.min_logvar = np.log(variance_bound[0])
 
     def propagate(self, state, action):
+        """
+        Predicts the next state with the model.
+        :param state: input state
+        :param action: input action
+        :return: the next state
+        """
         mean, var = self.propagate_dist(state, action)
         if self.propagate_probabilistic:
             covariance_matrices = torch.stack([torch.diagflat(v) for v in var])
@@ -160,6 +204,12 @@ class ProbabilisticEnvironmentModel(NN):
         return output
 
     def propagate_dist(self, state, action):
+        """
+        Predicts the next state with the model and also outputs the variance of the prediction.
+        :param state:
+        :param action:
+        :return:
+        """
         inp = torch.cat((state, action), dim=-1)  # use negative dim so we can input batches aswell as single values
         output = self.forward(inp)
         # probabilistic NN outputs mean var
@@ -192,6 +242,12 @@ class EnsembleEnvironmentModel:
         return True
 
     def propagate(self, s, a):
+        """
+        predicts the next states witha all models from the environment and returns a list of predictions
+        :param s: input state
+        :param a: input actions
+        :return: list of next state predictions
+        """
         return [m.propagate(s, a) for m in self.models]
 
     def forward(self, x):
@@ -203,13 +259,11 @@ class EnsembleEnvironmentModel:
 
 
 class ModelTrainer:
-    """
-    ModelTrainer optimized the parameters of a model.
-    """
 
     def __init__(self, model, loss_func=nn.MSELoss(), optimizer=torch.optim.Adam, weight_decay=0, lr=1e-2, lr_min=1e-5,
                  lr_decay=1., batch_size=50, epochs=1, logging=False, plotting=False):
         """
+        ModelTrainer optimized the parameters of a model.
         :param model: the model to optimize
         :param loss_func: the loss function that should be minimized
         :param optimizer: a function/constructor that returns a torch.optim optimizer
@@ -290,15 +344,12 @@ class ModelTrainer:
 
 
 class EnsembleTrainer:
-    """
-    EnsembleTrainer is composed of multiple trainers, one for each model in the ensemble.
-    """
 
     def __init__(self, ensemble, trainers):
         """
-
-        :param ensemble:
-        :param trainers:
+        EnsembleTrainer is composed of multiple trainers, one for each model in the ensemble.
+        :param ensemble: the ensemble model to train, instance of EnsembleEnvironmentModel
+        :param trainers: a list of model trainers for the ensemble models
         """
         if not len(trainers) == len(ensemble.models):
             raise ValueError("As many trainers as models needed!")
@@ -325,7 +376,7 @@ class IdleTrainer:
     def train(self, inputs, targets, epochs=-1):
         pass
 
-
+# taken from git.ias.informatik.tu-darmstadt.de/quanser/clients
 class PerfectDynamicsModelCartpole(nn.Module):
 
     def __init__(self, long=False):
@@ -401,10 +452,12 @@ class PerfectDynamicsModelCartpole(nn.Module):
 
     def propagate(self, state, action):
         return self.forward(torch.cat((state, action), dim=-1))
-#
 
+# taken from openAI Pendulum-v0 environment
 class PerfectDynamicsModelPendulum(nn.Module):
-
+        """
+        A perfect analytically implemented model of the cartpole, that matches the interface of the approximate models.
+        """
         def __init__(self):
             super(PerfectDynamicsModelPendulum, self).__init__()
 
@@ -448,7 +501,6 @@ class PerfectDynamicsModelPendulum(nn.Module):
 
         def propagate(self, state, action):
             return self.forward(torch.cat((state, action), dim=-1))
-
 
 perfect_models = {
     "Pendulum-v0": PerfectDynamicsModelPendulum(),

@@ -146,18 +146,10 @@ class TrajectoryController:
 
     def next_action(self, obs):
         """
-
-        :param obs:
-        :return:
+        next_actions finds and returns an optimized next action using the model and cost function of the controller.
+        :param obs: the observation at which to take an action
+        :return: the optimal action according to the controller
         """
-        # history = self.history.get()
-        # missing = self.history_len - len(history)
-        # if missing == self.history_len:
-        #     past_trajectory = torch.zeros(missing, self.action_dim)
-        # elif missing > 0:
-        #     past_trajectory = torch.cat((torch.stack(self.history.get()), torch.zeros(missing, self.action_dim)))
-        # else:
-        #     past_trajectory = torch.stack(self.history.get())
         if self.trajectory is None:
             # initialize trajectory
             self.trajectory = torch.zeros(self.trajectory_shape, device=self.device)

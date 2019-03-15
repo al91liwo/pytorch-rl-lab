@@ -83,6 +83,10 @@ class MPC:
             return reward
 
     def _memory_push(self, samples):
+        """
+        Adds samples to the memory
+        :param samples: the sampels to add
+        """
         if self.memory is None:
             self.memory = np.array(samples)
         else:

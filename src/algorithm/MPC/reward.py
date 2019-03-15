@@ -42,7 +42,7 @@ def perfect_reward_model_cartpole_stab(state, action):
     Perfect reward model of the cartpole stabilization task in the quanser_robots environment
     :param state: the state to calculate the reward from
     :param action: needs to fit the interface is somebody wants to make an action based reward function
-    :return:
+    :return: the reward
     """
     if state.dim == 1:
         cos_th = state[2]
@@ -57,7 +57,7 @@ def perfect_reward_model_cartpole_swing(state, action):
     Perfect reward model of the cartpole swing up task in the quanser_robots environment
     :param state: the state to calculate the reward from
     :param action: needs to fit the interface if somebody wants to make an action based reward function
-    :return:
+    :return: the reward
     """
     if state.dim == 1:
         cos_th = state[2]
