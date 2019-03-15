@@ -52,8 +52,11 @@ def instance_from_config(config):
     validate_config(config, layout_dict)
     print(config)
     for key in config:
-        if not (key == "run_id" or key == "env" or key == "dirname"):
+        try:
             config[key] = ast.literal_eval(config[key])
+        except ValueError:
+            pass
+
     # merging config into layout, EVERY layout needs a "run_id" variable
     layout_dict.update(config)
 

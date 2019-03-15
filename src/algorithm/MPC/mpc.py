@@ -5,6 +5,7 @@ import torch.distributions as distributions
 from src.algorithm.MPC.diagnose import ModelEval
 from src.algorithm.MPC.control import TrajectoryController
 from src.algorithm.MPC.control import control_time_diagnoser
+from src.algorithm.MPC.model import IdleTrainer
 
 
 class MPC:
@@ -106,6 +107,7 @@ class MPC:
         samples = []
         cum_reward = 0
         t = 0
+        traj = []
         while True:
             if render:
                 self.env.render()
@@ -115,6 +117,7 @@ class MPC:
             # print(action)
             next_obs, reward, done, _ = self.env.step(action)
             samples.append((obs, action, reward, next_obs, done))
+            traj.append([obs, action, reward, next_obs, done])
             cum_reward += reward
             t += 1
             if done or horizon > 0 and t == horizon:
@@ -124,7 +127,7 @@ class MPC:
 
         self._memory_push(np.array(samples))
 
-        return cum_reward
+        return cum_reward, traj
 
     def _train_model(self, epochs=0):
         """
@@ -168,7 +171,7 @@ class MPC:
         self.trajectory_controller.cost_func = self._expected_reward
         return self.trajectory_controller.next_action(obs)
 
-    def train(self, diagnose=False):
+    def train_sim(self, diagnose=False):
         """
         Starts the reinforcement learning algorithm on the environment.
         """
@@ -178,17 +181,22 @@ class MPC:
 
         print("Initial training after warmup.")
         # initial training uses a higher amount of epochs
-        self._train_model(5)
-
+        self._train_model()
+        rewards = []
+        trajectories = []
         for k in range(self.learning_trials):
             print("Learning trial #", k)
-            reward = self._trial(self._trajectory_controller, self.trial_horizon, self.render > 0 and k % self.render == 0)
+            reward, trajectory = self._trial(self._trajectory_controller, self.trial_horizon, self.render > 0 and k % self.render == 0)
             print("Reward: ", reward)
             print(len(self.memory), " samples in buffer")
             print("Training after trial #", k)
+            rewards.append(reward)
+            trajectories.append(trajectory)
             if diagnose:
                 self.diagnose_model.eval_print()
                 control_time_diagnoser.print_times()
                 control_time_diagnoser.reset_times()
             self._train_model()
             # self.trajectory_controller.set_trajectory_len(self.trajectory_controller.trajectory_len + 1)
+
+        return rewards, trajectories

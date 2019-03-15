@@ -21,7 +21,7 @@ This example was executed in `trial` mode as you can read in the command.
 #### test
 To start a training session you can for example use this command.
    
-        python main.py ddpg sim train src/config/example/train src/config/example/train_out
+        python main.py ddpg sim train src/config/example/train/parameters.csv src/config/example/train_out
 
 After that you can obtain a `actortarget` model that fits your needs and take the `parameters.csv` to a new folder
 and execute it as in the trial section.
@@ -29,4 +29,9 @@ and execute it as in the trial section.
 ### MPC
 The algorithm is explained right here -> [MPC](../../algorithm/MPC/Readme.md)
 
-Insert some gifs or plots with hyperparameters. 
+#### test
+To start a training session you can use this command.
+   
+        python main.py mpc sim train src/config/example/train/testmpc.csv src/config/example/train_out
+
+After that `src/config/example/train_out/textmpc_CartpoleStabShort-v0` will contain the results of the training. This is a file `rewarddata` containing the total episode rewards and a file `trajectories` containing all trial trajectories, each on one line, in order.

@@ -23,7 +23,8 @@ class CriticNetwork(nn.Module):
 
         self.layers = nn.ModuleList([nn.Linear(dim_in, dim_out) for dim_in, dim_out in zip(layers[:-1], layers[1:])])
         self.use_batch_norm = batch_norm
-        self.batch_norms = nn.ModuleList([nn.BatchNorm1d(dim_out) for dim_out in layers[1:-1]])
+        if self.use_batch_norm:
+            self.batch_norms = nn.ModuleList([nn.BatchNorm1d(dim_out) for dim_out in layers[1:-1]])
 
 
         # initialize weights
