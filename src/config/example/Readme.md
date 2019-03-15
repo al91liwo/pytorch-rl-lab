@@ -7,7 +7,7 @@ The algorithm is explained right here -> [DDPG](../../algorithm/DDPG/Readme.md).
 #### trial
 To start a trial session you can for example use this command.
 
-        python main.py ddpg sim trial src/config/example/trial src/config/example/trial_out 100
+        python main.py ddpg sim trial src/config/example/trial src/config/example/trial_out 1
 
 The command will save a reward plot in [this directory](/src/config/example) in the folder [out](/src/config/example/out)
 as you may test by yourself.
@@ -23,10 +23,8 @@ To start a training session you can for example use this command.
    
         python main.py ddpg sim train src/config/example/train src/config/example/train_out
 
-The plot will look like something like this:
-
-
-Insert some gifs or plots with hyperparameters 
+After that you can obtain a `actortarget` model that fits your needs and take the `parameters.csv` to a new folder
+and execute it as in the trial section.
 
 ### MPC
 The algorithm is explained right here -> [MPC](../../algorithm/MPC/Readme.md)

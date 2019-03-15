@@ -100,6 +100,7 @@ And the given plot in your specified `outdir`:
 ![Imgur](https://i.imgur.com/abSj3MD.png)
 
 To trial your models you can choose a model in the `outdir` that fits your needs.
+The model names that you need are always called `actortarget` with some numbers that represent the obtained `reward` in a training session.
 
 We choose the model that gained approx 10.000 reward and take the parameters.csv to a new folder called `test_model` and safe 
 the policy as `policy` and take the specified `parameters.csv` into `test_model`.
@@ -114,7 +115,9 @@ your reward plot for your policy will look like this:
 
 ![link](https://i.imgur.com/E4EMeeM.png)
 
-and the obtained policy like this (we only let the policy render once):
+You can see that the approximate `reward` is `10.000`
+
+and the obtained policy looks like this (we only let the policy render once):
 
 ![gif](https://i.imgur.com/URL7zer.gif)
 
