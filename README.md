@@ -5,9 +5,8 @@ DDPG and MPC implementation of Group 06 Frederik Wegner and Alexander Lind
 
 This guide assumes you are working under Ubuntu 16.04
 
-1. Make sure you have Python >= 3.5.3 on your system. If that is not the case,
+1. Make sure you have Python >= 3.5.3 on your system. If that is not the case, install Python3.6
 
-        install Python3.6
         sudo add-apt-repository ppa:deadsnakes/ppa
         sudo apt-get update
         sudo apt-get install python3.6
@@ -15,9 +14,9 @@ This guide assumes you are working under Ubuntu 16.04
  
 2. Clone this repository into some folder:
 
-        git clone --recursive git@github.com:al91liwo/pytorch-rl-lab.git
+        git clone git@github.com:al91liwo/pytorch-rl-lab.git
             or
-        git clone --recursive https://github.com/al91liwo/pytorch-rl-lab.git
+        git clone https://github.com/al91liwo/pytorch-rl-lab.git
 
 
 4. Create a virtual environment, activate it, and update it. You can also use an Anaconda virtual environment.
