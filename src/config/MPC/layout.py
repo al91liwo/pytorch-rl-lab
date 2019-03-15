@@ -1,4 +1,5 @@
 import gym
+import quanser_robots
 import torch.nn
 import ast
 import os
@@ -21,25 +22,23 @@ def layout():
     layout_dict = {
         # every layout needs a run_id param
         "run_id": 0,
-        "env": 0,
-        "reward": 0,
-        "model": 0,
-        "trainer": 0,
+        "env": "",
+        "dirname": "out",
+        # can be pnn. nn, or perfect
+        "model": "nn",
         "predict_horizon": 20,
-        "warmup_trial": 1,
+        "warmup_trials": 1,
         "learning_trials": 20,
-        "trial_horizon": 1000,
         "cem_samples": 400,
-        "nelite": 0,
+        "nelite": 40,
         "render": 0,
         "max_memory": 1000000,
         "device": "cpu",
         "layers": 0,
-        "activations": 0,
         "batch_norm": True,
         # Probabilistic Environment Model
         "predicts_delta": True,
-        "propagate_probabilistic": True,
+        "propagate_probabilistic": False,
         "variance_bound": [1.e-5, 0.5],
         "trial_horizon": 1000,
         # Model trainer
@@ -76,6 +75,7 @@ def instance_from_config(config):
         except ValueError:
             pass
 
+
     # merging config into layout, EVERY layout needs a "run_id" variable
     layout_dict.update(config)
 
@@ -111,12 +111,12 @@ def instance_from_config(config):
                                logging=layout_dict["logging"], plotting=False)
 
     if not layout_dict["env"] in rewards:
-        raise NotImplementedError("A reward function for the environment {} does not exist!".format(layout["env"]))
+        raise NotImplementedError("A reward function for the environment {} does not exist!".format(layout_dict["env"]))
 
     mpc = MPC(env, rewards[layout_dict["env"]], model, trainer, trial_horizon=layout_dict["trial_horizon"],
-              device=layout_dict["device"], warmup_trials=layout_dict["warump_trials"], trials=layout_dict["trials"],
+              device=layout_dict["device"], warmup_trials=layout_dict["warmup_trials"], learning_trials=layout_dict["learning_trials"],
               predict_horizon=layout_dict["predict_horizon"], cem_samples=layout_dict["cem_samples"],
-              nelite=layout_dict["elites"])
+              nelite=layout_dict["nelite"], render=layout_dict["render"])
 
     return mpc
 
@@ -128,14 +128,13 @@ def result_handler(result, outdir):
     :param outdir: directory you can use to do whatever with (e.g. save plot into directory), for every training session
     there will be a new directory given
     """
-    with open(os.path.join(outdir, 'rewarddata'), 'w') as fout:
-        fout.write(','.join([str(r) for r in result]))
+    rewards, trajectories = result
 
-    plt.xlabel("episode")
-    plt.ylabel("reward")
-    plt.plot(result)
-    plt.savefig(os.path.join(outdir, "rewardplot.png"))
-    print(result)
+    with open(os.path.join(outdir, 'rewarddata'), 'w') as fout:
+        fout.write(','.join([str(r) for r in rewards]))
+    with open(os.path.join(outdir, 'trajectories'), 'w') as fout:
+        for t in trajectories:
+            fout.write(','.join([str(r) for r in t])+'\n')
 
 
 

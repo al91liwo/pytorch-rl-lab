@@ -327,6 +327,83 @@ class IdleTrainer:
         pass
 
 
+class PerfectDynamicsModelCartpole(nn.Module):
+
+    def __init__(self, long=False):
+        super(PerfectDynamicsModelCartpole, self).__init__()
+        self.dt = 0.002
+
+        self._g = 9.81              # Gravitational acceleration [m/s^2]
+        self._eta_m = 1.            # Motor efficiency  []
+        self._eta_g = 1.            # Planetary Gearbox Efficiency []
+        self._Kg = 3.71             # Planetary Gearbox Gear Ratio
+        self._Jm = 3.9E-7           # Rotor inertia [kg.m^2]
+        self._r_mp = 6.35E-3        # Motor Pinion radius [m]
+        self._Rm = 2.6              # Motor armature Resistance [Ohm]
+        self._Kt = .00767           # Motor Torque Constant [N.zz/A]
+        self._Km = .00767           # Motor Torque Constant [N.zz/A]
+        self._mc = 0.38             # Mass of the cart [kg]
+
+        if long:
+            self._mp = 0.23         # Mass of the pole [kg]
+            self._pl = 0.641 / 2.   # Half of the pole length [m]
+
+            self._Beq = 5.4        # Equivalent Viscous damping Coefficient 5.4
+            self._Bp = 0.0024       # Viscous coefficient at the pole 0.0024
+            self.gain = 1.3
+            self.scale = np.array([0.45,1.])
+        else:
+            self._mp = 0.127        # Mass of the pole [kg]
+            self._pl = 0.3365 / 2.  # Half of the pole length [m]
+            self._Beq = 5.4         # Equivalent Viscous damping Coefficient 5.4
+            self._Bp = 0.0024       # Viscous coefficient at the pole 0.0024
+            self.gain = 1.5
+            self.scale = np.array([1.,1.])
+
+        # Compute Inertia:
+        self._Jp = self._pl**2 * self._mp/3.   # Pole inertia [kg.m^2]
+        self._Jeq = self._mc + (self._eta_g * self._Kg**2 * self._Jm)/(self._r_mp**2)
+
+    def forward(self, input):#state, V_m):
+        input = input.squeeze()
+        input = input.detach().numpy()
+
+        x = input[:,0]
+        theta_sin = input[:,1]
+        theta_cos =  input[:,2]
+        x_dot = input[:,3]
+        theta_dot = input[:,4]
+        action = input[:,5]
+        theta = np.arctan2(theta_cos, theta_sin)
+
+        F = self.gain * (self._eta_g * self._Kg * self._eta_m * self._Kt) / (self._Rm * self._r_mp) * (- self._Kg * self._Km * x_dot / self._r_mp + self._eta_m * action)
+
+        A = np.array([
+            [[theta_cos, self._pl],
+            [self._mp + self._mc, self._pl * self._mp * theta_cos]]
+            for theta_cos in theta_cos])
+
+        b = np.array([
+            [-self._g * theta_sin - self._Bp * theta_dot,
+            F + self._mp * self._pl * theta_dot**2 * theta_sin - self._Beq*x_dot]
+            for theta_sin, theta_dot, F, x_dot in zip(theta_sin, theta_dot, F, x_dot)])
+
+        solution = np.linalg.solve(A, b) * self.scale
+        x_ddot = solution[:,0]
+        theta_ddot = solution[:,1]
+        theta_dot_new = theta_dot + theta_ddot * self.dt
+        x_dot_new = x_dot + x_ddot * self.dt
+        theta_new = theta + theta_dot * self.dt
+        x_new = x + x_dot * self.dt
+        output = np.transpose([x_new, np.sin(theta_new), np.cos(theta_new), x_dot_new, theta_dot_new])
+        return torch.tensor(output)
+
+
+
+    def propagate(self, state, action):
+        return self.forward(torch.cat((state, action), dim=-1))
+#
+
 class PerfectDynamicsModelPendulum(nn.Module):
 
         def __init__(self):
@@ -375,5 +452,7 @@ class PerfectDynamicsModelPendulum(nn.Module):
 
 
 perfect_models = {
-    "Pendulum-v0": PerfectDynamicsModelPendulum()
+    "Pendulum-v0": PerfectDynamicsModelPendulum(),
+    "CartpoleStabShort-v0": PerfectDynamicsModelCartpole(),
+    "CartpoleSwingShort-v0": PerfectDynamicsModelCartpole()
 }

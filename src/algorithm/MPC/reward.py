@@ -63,5 +63,7 @@ rewards = {
 
 # reward functions using only torch and not numpy
 rewards_t = {
-    "CartpoleStabShort-v0": perfect_reward_model_cartpole_stab
+    "Pendulum-v0": perfect_reward_model_pendulum,
+    "CartpoleStabShort-v0": perfect_reward_model_cartpole_stab,
+    "CartpoleSwingShort-v0": perfect_reward_model_cartpole_stab
 }

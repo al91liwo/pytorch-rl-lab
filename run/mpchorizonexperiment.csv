@@ -1,0 +1,11 @@
+run_id;env;learning_trials;model;predict_horizon;warmup_trials;trial_horizon;nelite;layers;batch_norm;propagate_probabilistic;weight_decay;lr;batch_size;epochs;logging;plotting;render
+mpcH4;CartpoleSwingShort-v0;2;perfect;4;1;300;50;[200,200];False;False;[0.00001,0.00001];0.001;25;5;False;False;1
+mpcH8;CartpoleSwingShort-v0;2;perfect;8;1;300;50;[200,200];False;False;[0.00001,0.00001];0.001;25;5;False;False;0
+mpcH12;CartpoleSwingShort-v0;2;perfect;12;1;300;50;[200,200];False;False;[0.00001,0.00001];0.001;25;5;False;False;0
+mpcH16;CartpoleSwingShort-v0;2;perfect;16;1;300;50;[200,200];False;False;[0.00001,0.00001];0.001;25;5;False;False;0
+mpcH20;CartpoleSwingShort-v0;2;perfect;20;1;300;50;[200,200];False;False;[0.00001,0.00001];0.001;25;5;False;False;1
+mpcH4;CartpoleStabShort-v0;2;perfect;4;1;300;50;[200,200];False;False;[0.00001,0.00001];0.001;25;5;False;False;1
+mpcH8;CartpoleStabShort-v0;2;perfect;8;1;300;50;[200,200];False;False;[0.00001,0.00001];0.001;25;5;False;False;0
+mpcH12;CartpoleStabShort-v0;2;perfect;12;1;300;50;[200,200];False;False;[0.00001,0.00001];0.001;25;5;False;False;0
+mpcH16;CartpoleStabShort-v0;2;perfect;16;1;300;50;[200,200];False;False;[0.00001,0.00001];0.001;25;5;False;False;0
+mpcH20;CartpoleStabShort-v0;2;perfect;20;1;300;50;[200,200];False;False;[0.00001,0.00001];0.001;25;5;False;False;1
