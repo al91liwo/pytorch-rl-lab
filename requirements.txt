@@ -67,7 +67,7 @@ tornado==5.1.1
 traitlets==4.3.2
 txaio==2.9.0
 ujson==1.35
-urllib3==1.24.1
+urllib3==1.26.5
 vpnotebook==0.1.3
 vpython==7.4.7
 wcwidth==0.1.7
